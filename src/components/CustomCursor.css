@@ -1,0 +1,24 @@
+.custom-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  background: rgba(44, 95, 93, 0.8);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: difference;
+}
+
+@media (max-width: 768px) {
+  .custom-cursor {
+    display: none;
+  }
+}
+
+/* Hide default cursor on interactive elements */
+a, button, .btn, .service-card, .project-card, .contact-item {
+  cursor: none;
+}
+
