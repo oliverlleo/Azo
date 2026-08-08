@@ -3,33 +3,54 @@
 const $=(s,c=document)=>c.querySelector(s), $$=(s,c=document)=>[...c.querySelectorAll(s)];
 const reduced=false;
 
-// Force the intended AZO motion even when the operating system asks the browser
-// to reduce animations. The site remains fully usable without relying on scroll.
-const motionStyle=document.createElement('style');
-motionStyle.id='azo-motion-force';
-motionStyle.textContent=`@media (prefers-reduced-motion: reduce){
-.ambient{display:block!important}
-.loader{transition-duration:.65s!important}.loader__bar{animation-duration:1.25s!important;animation-iteration-count:1!important}
-.hero-slide{transition-duration:.15s!important}.hero-slide.active{transition-duration:1.15s,7s,.25s!important}.hero-slide.leaving{transition-duration:1.05s!important}
-.hero__blueprint path,.hero__blueprint line,.hero__blueprint rect{animation-duration:18s!important;animation-iteration-count:infinite!important}
-.hero.scene-ready h1 .word{animation-duration:.9s!important;animation-iteration-count:1!important}
-.hero-dot.active span{animation-duration:5.6s!important;animation-iteration-count:1!important}
-.hero__orb{animation-duration:6s!important;animation-iteration-count:infinite!important}.hero__orb::after{animation-duration:2.8s!important;animation-iteration-count:infinite!important}
-.ticker-track{animation-duration:22s!important;animation-iteration-count:infinite!important}
-.service-tab,.service-tab::before{transition-duration:.6s!important}.service-scene{transition-duration:.1s,1s!important}.service-scene.active{transition-duration:.1s,1.1s!important}.service-scene img{transition-duration:6s!important}.service-progress.run{animation-duration:6.2s!important;animation-iteration-count:1!important}
-.project-shot{transition-duration:.1s,.9s!important}.project-shot.active{transition-duration:.1s,.9s!important}.project-shot img{transition-duration:7s!important}
-.integration-visual .plan-line{animation-duration:5.5s!important;animation-iteration-count:infinite!important}.scan-line{animation-duration:4.8s!important;animation-iteration-count:infinite!important}.integration-node{animation-duration:4.5s!important;animation-iteration-count:infinite!important}
-.method-card__glyph{animation-duration:10s!important;animation-iteration-count:infinite!important}.cta::before{animation-duration:16s!important;animation-iteration-count:infinite!important}
-.inner-hero__media img{animation-duration:12s!important;animation-iteration-count:infinite!important}.contact-panel::before{animation-duration:15s!important;animation-iteration-count:infinite!important}
-.page-transition{transition-duration:.65s!important}.mobile-nav{transition-duration:.65s!important}
-}`;
-document.head.appendChild(motionStyle);
-document.documentElement.dataset.azoMotion='on';
-console.info('[AZO] motion engine loaded');
+// AZO motion override: keep the site animated and make the hero calmer.
+// Remove the stylesheet's global reduced-motion killer so it cannot freeze the experience.
+for(const sheet of [...document.styleSheets]){
+ try{
+  for(let i=sheet.cssRules.length-1;i>=0;i--){
+   const rule=sheet.cssRules[i];
+   if(rule instanceof CSSMediaRule && rule.conditionText.includes('prefers-reduced-motion')) sheet.deleteRule(i);
+  }
+ }catch(_){ }
+}
+const heroMotionStyle=document.createElement('style');
+heroMotionStyle.textContent=`
+.hero-slide{opacity:0!important;clip-path:none!important;transform:scale(1.025)!important;transition:opacity 1.45s ease-in-out,transform 8s ease-out!important;will-change:opacity,transform}
+.hero-slide.active{opacity:1!important;clip-path:none!important;transform:scale(1)!important;z-index:1}
+.hero-slide.leaving{opacity:0!important;clip-path:none!important}
+.hero h1 .line{overflow:visible!important;min-height:.86em}
+.hero h1 .word{transform:none!important;opacity:1!important;animation:none!important}
+.hero h1 .typing-target::after{content:'|';display:inline-block;margin-left:.035em;font-family:Arial,Helvetica,sans-serif;font-weight:200;font-size:.78em;line-height:1;animation:typeCursor .72s steps(1,end) infinite!important;vertical-align:.06em}
+@keyframes typeCursor{50%{opacity:0}}
+`;
+document.head.appendChild(heroMotionStyle);
+
+// Type the hero title letter by letter, line by line.
+let heroTypingStarted=false;
+function startHeroTyping(){
+ if(heroTypingStarted)return; heroTypingStarted=true;
+ const words=$$('.hero h1 .word'); if(!words.length)return;
+ const targets=words.map(w=>w.querySelector('em')||w);
+ const originals=targets.map(t=>t.textContent);
+ targets.forEach(t=>t.textContent='');
+ let line=0;
+ const typeLine=()=>{
+  if(line>=targets.length)return;
+  const target=targets[line], text=originals[line]; let i=0;
+  target.classList.add('typing-target');
+  const tick=()=>{
+   target.textContent=text.slice(0,i++);
+   if(i<=text.length){setTimeout(tick,46+Math.random()*28)}
+   else{target.classList.remove('typing-target');line++;if(line<targets.length)setTimeout(typeLine,230)}
+  };
+  tick();
+ };
+ typeLine();
+}
 
 // Loader (real sequence, bounded duration)
 const loader=$('.loader');
-if(loader){document.body.classList.add('is-loading');let n=0;const c=$('.loader__count');const timer=setInterval(()=>{n=Math.min(100,n+Math.floor(Math.random()*13)+5);if(c)c.textContent=String(n).padStart(3,'0')+'%';if(n>=100)clearInterval(timer)},90);setTimeout(()=>{loader.classList.add('done');document.body.classList.remove('is-loading');$('.hero')?.classList.add('scene-ready')},reduced?100:1450)}else{$('.hero')?.classList.add('scene-ready')}
+if(loader){document.body.classList.add('is-loading');let n=0;const c=$('.loader__count');const timer=setInterval(()=>{n=Math.min(100,n+Math.floor(Math.random()*13)+5);if(c)c.textContent=String(n).padStart(3,'0')+'%';if(n>=100)clearInterval(timer)},90);setTimeout(()=>{loader.classList.add('done');document.body.classList.remove('is-loading');$('.hero')?.classList.add('scene-ready');startHeroTyping()},1450)}else{$('.hero')?.classList.add('scene-ready');startHeroTyping()}
 
 // Header
 addEventListener('scroll',()=>$('.site-header')?.classList.toggle('scrolled',scrollY>24),{passive:true});
@@ -42,20 +63,18 @@ $$('.mobile-nav a').forEach(a=>a.addEventListener('click',()=>{mn?.classList.rem
 // animated architectural background canvas
 const canvas=$('#ambient-canvas');
 if(canvas && !reduced){
- try{
- const ctx=canvas.getContext('2d',{alpha:true}); if(!ctx) throw new Error('Canvas 2D unavailable'); let w=0,h=0,dpr=1,t=0,raf; const pts=[];
+ const ctx=canvas.getContext('2d',{alpha:true}); let w=0,h=0,dpr=1,t=0,raf; const pts=[];
  function resize(){dpr=Math.min(devicePixelRatio||1,1.5);w=innerWidth;h=innerHeight;canvas.width=w*dpr;canvas.height=h*dpr;canvas.style.width=w+'px';canvas.style.height=h+'px';ctx.setTransform(dpr,0,0,dpr,0,0);pts.length=0;const count=w<700?12:24;for(let i=0;i<count;i++)pts.push({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.12,vy:(Math.random()-.5)*.12,r:Math.random()*1.3+.5})}
  function draw(){t+=.004;ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(13,47,53,.09)';ctx.lineWidth=.7;
   const step=w<700?110:150, ox=(t*36)%step, oy=(t*18)%step; for(let x=-step+ox;x<w+step;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+Math.sin(t+x*.002)*28,h);ctx.stroke()} for(let y=-step+oy;y<h+step;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y+Math.cos(t+y*.003)*16);ctx.stroke()}
   for(const p of pts){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>w)p.vx*=-1;if(p.y<0||p.y>h)p.vy*=-1;ctx.fillStyle='rgba(166,92,58,.16)';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}
   raf=requestAnimationFrame(draw)}
  resize();draw();addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelAnimationFrame(raf);else draw()});
- }catch(err){console.warn('[AZO] ambient canvas unavailable, continuing other motion',err)}
 }
 
 // Hero autonomous scene animation
 const heroSlides=$$('.hero-slide'), heroDots=$$('.hero-dot'); let heroIdx=0, heroTimer;
-function setHero(i,user=false){if(!heroSlides.length)return;const old=heroIdx;heroIdx=(i+heroSlides.length)%heroSlides.length;if(old!==heroIdx){heroSlides[old]?.classList.remove('active');heroSlides[old]?.classList.add('leaving');setTimeout(()=>heroSlides[old]?.classList.remove('leaving'),1150)}heroSlides[heroIdx]?.classList.add('active');heroDots.forEach((d,k)=>d.classList.toggle('active',k===heroIdx));if(user)restartHero()}
+function setHero(i,user=false){if(!heroSlides.length)return;heroIdx=(i+heroSlides.length)%heroSlides.length;heroSlides.forEach((slide,k)=>{slide.classList.toggle('active',k===heroIdx);slide.classList.remove('leaving')});heroDots.forEach((d,k)=>d.classList.toggle('active',k===heroIdx));if(user)restartHero()}
 function restartHero(){clearInterval(heroTimer);if(!reduced)heroTimer=setInterval(()=>setHero(heroIdx+1),5600)}
 heroDots.forEach((d,i)=>d.addEventListener('click',()=>setHero(i,true)));setHero(0);restartHero();
 
