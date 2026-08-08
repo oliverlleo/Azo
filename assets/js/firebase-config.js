@@ -21,3 +21,10 @@ const storage = getStorage(app);
 setPersistence(auth, browserLocalPersistence).catch(() => {});
 
 export { app, auth, db, storage, firebaseConfig };
+
+// Load the correct management layer without exposing any admin link on the public site.
+if (/\/admin\/?(?:index\.html)?$/i.test(location.pathname) || location.pathname.includes('/admin/')) {
+  import('../../admin/existing-projects.js').catch(error => console.warn('[AZO Admin] Projetos existentes indisponíveis.', error));
+} else {
+  import('./project-overrides.js').catch(error => console.warn('[AZO] Alterações de projetos existentes indisponíveis.', error));
+}
