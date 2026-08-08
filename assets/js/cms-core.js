@@ -139,6 +139,19 @@ function applyOverride(doc, item) {
     return;
   }
 
+  if (item.key.startsWith('attr:')) {
+    const marker = item.key.slice(5);
+    const splitAt = marker.lastIndexOf('::');
+    if (splitAt < 0) return;
+    const path = marker.slice(0, splitAt);
+    const attribute = marker.slice(splitAt + 2);
+    if (attribute !== 'href') return;
+    const element = doc.querySelector(path);
+    if (!element || typeof item.value !== 'string') return;
+    element.setAttribute(attribute, item.value);
+    return;
+  }
+
   if (item.key.startsWith('image:')) {
     const path = item.key.slice(6);
     const img = doc.querySelector(path);
