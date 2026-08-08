@@ -1,6 +1,9 @@
 (()=>{
 'use strict';
 const $=(s,c=document)=>c.querySelector(s), $$=(s,c=document)=>[...c.querySelectorAll(s)];
+// Keep the premium motion enabled even when the OS requests reduced motion.
+// Remove the stylesheet media block that previously collapsed every animation/transition.
+for(const sheet of [...document.styleSheets]){try{for(let i=sheet.cssRules.length-1;i>=0;i--){const r=sheet.cssRules[i];if(r instanceof CSSMediaRule && r.conditionText.includes('prefers-reduced-motion'))sheet.deleteRule(i)}}catch(_){}}
 const reduced=false;
 
 // Loader (real sequence, bounded duration)
