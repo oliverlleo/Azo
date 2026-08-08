@@ -32,19 +32,6 @@ function toast(message, type='success') {
   setTimeout(()=>el.remove(),3500);
 }
 
-async function readProject(base) {
-  const snap = await getDoc(doc(db,'projects',`builtin-${base.key}`));
-  const saved = snap.exists() ? snap.data() : {};
-  return {
-    ...base,
-    ...saved,
-    id:`builtin-${base.key}`,
-    builtinKey:base.key,
-    isBuiltin:true,
-    published:saved.published !== false
-  };
-}
-
 function ensurePanel() {
   const view = $('#view-projects');
   if (!view || $('#existing-projects-panel')) return;
@@ -141,9 +128,8 @@ async function saveProject(event) {
   button.disabled = true;
   button.textContent = 'Salvando...';
   try {
-    await setDoc(doc(db,'projects',`builtin-${key}`),{
+    await setDoc(doc(db,'projectSettings',`builtin-${key}`),{
       builtinKey:key,
-      isBuiltin:true,
       title:$('#existing-project-title').value.trim() || base.title,
       category:$('#existing-project-category').value.trim() || base.category,
       description:$('#existing-project-description').value.trim(),
@@ -169,9 +155,8 @@ async function toggleProject(key) {
   if (!project || !base || !user) return;
   if (project.published && !confirm(`Remover “${project.title}” do site? As fotos originais não serão apagadas e você poderá mostrar o projeto novamente depois.`)) return;
   try {
-    await setDoc(doc(db,'projects',`builtin-${key}`),{
+    await setDoc(doc(db,'projectSettings',`builtin-${key}`),{
       builtinKey:key,
-      isBuiltin:true,
       title:project.title || base.title,
       category:project.category || base.category,
       description:project.description || '',
@@ -189,7 +174,7 @@ async function restoreProject(key) {
   const base = BUILTINS.find(p=>p.key===key);
   if (!base || !confirm(`Voltar “${base.title}” para o nome, tipo e visibilidade originais?`)) return;
   try {
-    await deleteDoc(doc(db,'projects',`builtin-${key}`));
+    await deleteDoc(doc(db,'projectSettings',`builtin-${key}`));
     await load();
     toast('Projeto restaurado para o conteúdo original.');
   } catch (error) { toast(error.message || 'Não foi possível restaurar.','error'); }
@@ -214,14 +199,13 @@ async function load() {
   if (root) root.innerHTML='<div class="loading-grid"><div class="skeleton"></div><div class="skeleton"></div></div>';
   const rows = [];
   for (const base of BUILTINS) {
-    const snap = await getDoc(doc(db,'projects',`builtin-${base.key}`));
+    const snap = await getDoc(doc(db,'projectSettings',`builtin-${base.key}`));
     const saved = snap.exists() ? snap.data() : {};
     rows.push({
       ...base,
       ...saved,
       id:`builtin-${base.key}`,
       builtinKey:base.key,
-      isBuiltin:true,
       hasOverride:snap.exists(),
       published:saved.published !== false
     });
