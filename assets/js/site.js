@@ -16,7 +16,7 @@ for(const sheet of [...document.styleSheets]){
 const heroMotionStyle=document.createElement('style');
 heroMotionStyle.textContent=`
 .hero-slide{opacity:0!important;clip-path:none!important;transform:scale(1.025)!important;transition:opacity 1.45s ease-in-out,transform 8s ease-out!important;will-change:opacity,transform}
-.hero-slide.active{opacity:1!important;clip-path:none!important;transform:scale(1)!important;z-index:1}
+.hero-slide.active{opacity:1!important;clip-path:none!important;transform:scale(1)!important}
 .hero-slide.leaving{opacity:0!important;clip-path:none!important}
 .hero h1 .line{overflow:visible!important;min-height:.86em}
 .hero h1 .word{transform:none!important;opacity:1!important;animation:none!important}
