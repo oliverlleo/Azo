@@ -1,8 +1,10 @@
 // Friendly-language layer for the AZO owner panel.
-// This file intentionally changes only labels/help text in the admin UI.
+// Only presentation labels are changed here; the saved site content is untouched.
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+const setText = (el, value) => { if (el && el.textContent !== value) el.textContent = value; };
+const setHtml = (el, value) => { if (el && el.innerHTML !== value) el.innerHTML = value; };
 
 const PAGE_NAMES = {
   index: 'Página inicial',
@@ -44,30 +46,26 @@ function imageInfo(path = '') {
   if (project) {
     const code = project[1].toUpperCase();
     const number = Number(project[2]);
-    const mobile = Boolean(project[3]);
     return [
       `Casa ${code} — foto ${number}`,
-      mobile ? 'Galeria do projeto — versão para celular' : 'Galeria do projeto — versão para computador'
+      project[3] ? 'Galeria do projeto — versão para celular' : 'Galeria do projeto — versão para computador'
     ];
   }
-  const file = path.split('/').pop() || 'imagem';
-  return ['Imagem do site', file];
+  return ['Imagem do site', 'Imagem usada em uma área do site'];
 }
 
 function areaFromContext(raw = '') {
   const value = raw.toLowerCase();
   if (value.includes('site-header') || value.includes('.nav') || value.includes('mobile-nav')) return 'Menu principal';
   if (value.includes('footer')) return 'Rodapé';
-  if (value.includes('hero')) return 'Topo da página';
+  if (value.includes('inner-hero') || value.includes('hero')) return 'Topo da página';
   if (value.includes('service')) return 'Seção Serviços';
-  if (value.includes('project')) return 'Seção Projetos';
+  if (value.includes('project') || value.includes('portfolio')) return 'Seção Projetos';
   if (value.includes('method')) return 'Seção Como trabalhamos';
   if (value.includes('about')) return 'Seção Sobre a AZO';
   if (value.includes('contact') || value.includes('form-') || value.includes('lead-form')) return 'Formulário de contato';
   if (value.includes('cta')) return 'Chamada para contato';
   if (value.includes('ticker')) return 'Faixa de destaques';
-  if (value.includes('inner-hero')) return 'Topo da página';
-  if (value.includes('portfolio')) return 'Lista de projetos';
   return '';
 }
 
@@ -98,23 +96,20 @@ function friendlyTextLabel(raw = '', original = '') {
   if (fixed[raw]) return fixed[raw];
 
   const lower = raw.toLowerCase();
-  if (lower.includes('eyebrow')) return `${areaFromContext(raw) || 'Seção'} — texto pequeno acima do título`;
+  const area = areaFromContext(raw);
+  if (lower.includes('eyebrow')) return `${area || 'Seção'} — texto pequeno acima do título`;
   if (lower.includes('nav-cta')) return 'Menu principal — botão “Solicitar orçamento”';
-  if (lower.includes('brand')) return 'Nome/identificação da marca';
   if (lower.includes('project-info__name')) return 'Seção Projetos — nome do projeto em destaque';
   if (lower.includes('project-info__meta')) return 'Seção Projetos — tipo do projeto em destaque';
   if (lower.includes('project-counter')) return 'Seção Projetos — contador de projetos';
-  if (lower.includes('service-tab')) return 'Seção Serviços — nome de um serviço';
+  if (lower.includes('service-tab')) return 'Seção Serviços — nome do serviço';
   if (lower.includes('footer-bottom')) return 'Rodapé — informação final';
-
-  const area = areaFromContext(raw);
-  const type = typeFromContext(raw);
-  if (area) return `${area} — ${type}`;
+  if (area) return `${area} — ${typeFromContext(raw)}`;
 
   const text = String(original || '').trim();
   if (/solicitar orçamento|solicitar uma conversa/i.test(text)) return 'Botão de contato';
   if (/serviços|projetos|sobre|contato|como trabalhamos/i.test(text) && text.length < 35) return 'Item do menu ou título curto';
-  return `${pageName()} — ${type}`;
+  return `${pageName()} — ${typeFromContext(raw)}`;
 }
 
 function makeContentFriendly() {
@@ -124,8 +119,8 @@ function makeContentFriendly() {
     const raw = label.textContent.trim();
     const original = $('.original-text', card)?.textContent.replace(/^Original:\s*/i, '').trim() || '';
     label.dataset.technicalLabel = raw;
-    label.textContent = friendlyTextLabel(raw, original);
-    label.title = `Local técnico: ${raw}`;
+    setText(label, friendlyTextLabel(raw, original));
+    label.title = `Onde aparece: ${friendlyTextLabel(raw, original)}`;
     label.dataset.friendly = '1';
   });
 }
@@ -137,44 +132,36 @@ function makeImagesFriendly() {
     const [title, description] = imageInfo(path);
     const strong = $('.asset-info strong', card);
     const small = $('.asset-info small', card);
-    if (strong) {
-      strong.textContent = title;
-      strong.title = title;
-    }
-    if (small) {
-      small.textContent = description;
-      small.title = `Arquivo interno: ${path}`;
-    }
-    const replace = $('[data-replace-asset]', card);
-    const restore = $('[data-restore-asset]', card);
-    if (replace) replace.textContent = 'Trocar imagem';
-    if (restore) restore.textContent = 'Voltar para original';
+    setText(strong, title);
+    if (strong) strong.title = title;
+    setText(small, description);
+    if (small) small.title = `Arquivo interno: ${path}`;
+    setText($('[data-replace-asset]', card), 'Trocar imagem');
+    setText($('[data-restore-asset]', card), 'Voltar para original');
   });
 }
 
 function simplifyStaticInterface() {
   const search = $('#image-search');
-  if (search) search.placeholder = 'Buscar imagem, serviço ou projeto...';
+  if (search && search.placeholder !== 'Buscar imagem, serviço ou projeto...') search.placeholder = 'Buscar imagem, serviço ou projeto...';
 
-  const noticeImages = $('#view-images .notice');
-  if (noticeImages) noticeImages.innerHTML = '<b>Todas as imagens do site.</b> Escolha visualmente a foto que deseja alterar e clique em “Trocar imagem”. As versões para computador e celular aparecem identificadas separadamente.';
+  setHtml($('#view-images .notice'), '<b>Todas as imagens do site.</b> Escolha visualmente a foto que deseja alterar e clique em “Trocar imagem”. As versões para computador e celular aparecem identificadas separadamente.');
+  setHtml($('#view-content .notice'), '<b>Escolha a página e altere os textos.</b> Cada campo informa em linguagem simples onde aquele texto aparece no site. Depois clique em “Salvar alterações”.');
+  setText($('#view-dashboard .hero-panel p:last-child'), 'Altere textos, títulos, imagens e projetos sem mexer em código. O que for salvo aqui passa a ser usado pelo site.');
+  setText($('.login-copy > p:last-child'), 'Entre com seu e-mail e senha para alterar textos, imagens e projetos do site.');
 
-  const noticeContent = $('#view-content .notice');
-  if (noticeContent) noticeContent.innerHTML = '<b>Escolha a página e altere os textos.</b> Cada campo informa em linguagem simples onde aquele texto aparece no site. Depois clique em “Salvar alterações”.';
+  setText($('#stat-replacements')?.parentElement?.querySelector('span'), 'Imagens alteradas');
+  setText($('#stat-replacements')?.parentElement?.querySelector('small'), 'trocadas pelo painel');
 
-  const dashboardCopy = $('#view-dashboard .hero-panel p:last-child');
-  if (dashboardCopy) dashboardCopy.textContent = 'Altere textos, títulos, imagens e projetos sem mexer em código. O que for salvo aqui passa a ser usado pelo site.';
-
-  const replacementsLabel = $('#stat-replacements')?.parentElement?.querySelector('span');
-  if (replacementsLabel) replacementsLabel.textContent = 'Imagens alteradas';
-  const replacementsHelp = $('#stat-replacements')?.parentElement?.querySelector('small');
-  if (replacementsHelp) replacementsHelp.textContent = 'trocadas pelo painel';
+  const kicker = $('#view-kicker');
+  if (kicker?.textContent === 'Firebase Storage') setText(kicker, 'Imagens do site');
+  if (kicker?.textContent === 'Portfólio') setText(kicker, 'Projetos do site');
 
   const sync = $('#sync-status');
-  if (sync && /firebase/i.test(sync.textContent)) sync.lastChild.textContent = ' Alterações online';
+  if (sync && /firebase conectado/i.test(sync.textContent)) setText(sync.lastChild, ' Alterações online');
 
-  const securityTitle = $('#view-security .security-grid article:nth-child(2) .panel-head h3');
-  if (securityTitle) securityTitle.textContent = 'Como o painel protege o acesso';
+  setText($('#view-security .security-grid article:nth-child(2) .panel-head .eyebrow'), 'Proteção do painel');
+  setText($('#view-security .security-grid article:nth-child(2) .panel-head h3'), 'Como o painel protege o acesso');
 
   const securityItems = $$('#view-security .security-grid article:nth-child(2) .security-summary > div');
   const securityTexts = [
@@ -185,23 +172,57 @@ function simplifyStaticInterface() {
   securityItems.forEach((item, index) => {
     const pair = securityTexts[index];
     if (!pair) return;
-    const strong = $('strong', item);
-    const small = $('small', item);
-    if (strong) strong.textContent = pair[0];
-    if (small) small.textContent = pair[1];
+    setText($('strong', item), pair[0]);
+    setText($('small', item), pair[1]);
   });
 
   const uidTerm = $$('#view-security dt').find(dt => dt.textContent.trim() === 'UID');
-  if (uidTerm) uidTerm.textContent = 'Identificador da conta';
+  if (uidTerm) setText(uidTerm, 'Identificador da conta');
+
+  const quickSecurity = $('#view-dashboard .dashboard-grid article:nth-child(2) .security-summary');
+  if (quickSecurity) {
+    const rows = $$('.security-summary > div', quickSecurity);
+    const copy = [
+      ['Sem acesso pelo site público', 'O painel não aparece em nenhum menu ou botão do site.'],
+      ['Entrada somente com senha', 'Não existe criação pública de contas.'],
+      ['Somente pessoas autorizadas', 'Só contas liberadas conseguem fazer alterações.']
+    ];
+    rows.forEach((row, index) => {
+      if (!copy[index]) return;
+      setText($('strong', row), copy[index][0]);
+      setText($('small', row), copy[index][1]);
+    });
+  }
+
+  $$('#project-form label').forEach(label => {
+    const textNode = [...label.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.nodeValue.trim());
+    if (!textNode) return;
+    const current = textNode.nodeValue.trim();
+    const replacements = {
+      'Título': 'Nome do projeto',
+      'Categoria': 'Tipo do projeto',
+      'Descrição': 'Descrição do projeto',
+      'Ordem': 'Posição na lista',
+      'Publicado': 'Mostrar no site'
+    };
+    if (replacements[current]) textNode.nodeValue = `${replacements[current]} `;
+  });
 }
 
+let scheduled = false;
 function runFriendlyPass() {
+  scheduled = false;
   simplifyStaticInterface();
   makeContentFriendly();
   makeImagesFriendly();
 }
+function scheduleFriendlyPass() {
+  if (scheduled) return;
+  scheduled = true;
+  requestAnimationFrame(runFriendlyPass);
+}
 
-const observer = new MutationObserver(() => runFriendlyPass());
+const observer = new MutationObserver(scheduleFriendlyPass);
 observer.observe(document.documentElement, { childList: true, subtree: true });
-document.addEventListener('DOMContentLoaded', runFriendlyPass);
-runFriendlyPass();
+document.addEventListener('DOMContentLoaded', scheduleFriendlyPass);
+scheduleFriendlyPass();
