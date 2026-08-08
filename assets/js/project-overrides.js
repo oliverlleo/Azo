@@ -122,7 +122,7 @@ function rebuildHomeProjects(){
 
 async function load(){
   try{
-    const snap=await getDocs(collection(db,'projects'));
+    const snap=await getDocs(collection(db,'projectSettings'));
     snap.forEach(item=>{
       const data=item.data();
       if(data?.builtinKey && ORDER.includes(String(data.builtinKey).toUpperCase())){
