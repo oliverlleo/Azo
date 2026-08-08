@@ -119,4 +119,7 @@ $$('[data-gallery]').forEach(el=>el.addEventListener('click',()=>openLb(el.datas
 // Two-step contact -> WhatsApp
 const form=$('#lead-form');let formStep=0;function showStep(n){formStep=n;$$('.form-step',form).forEach((s,i)=>s.classList.toggle('active',i===n));$$('.form-progress span',form).forEach((s,i)=>s.classList.toggle('active',i<=n))}
 if(form){showStep(0);$('.form-next',form)?.addEventListener('click',()=>{const req=$$('.form-step.active [required]',form);if(req.some(x=>!x.value.trim())){req.find(x=>!x.value.trim())?.focus();return}showStep(1)});$('.form-back',form)?.addEventListener('click',()=>showStep(0));form.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(form), lines=['Olá, equipe AZO! Gostaria de conversar sobre um projeto.',''];for(const [k,v] of fd.entries())if(v)lines.push(`${k}: ${v}`);const url='https://wa.me/5515997180355?text='+encodeURIComponent(lines.join('\n'));window.open(url,'_blank','noopener')})}
+
+// Firebase CMS is loaded only as a data layer. There is intentionally no public link to /admin/.
+import('./cms.js').catch(error=>console.warn('[AZO CMS] runtime indisponível; site estático mantido.',error));
 })();
