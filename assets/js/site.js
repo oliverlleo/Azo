@@ -33,8 +33,25 @@ document.head.appendChild(heroMotionStyle);
 
 // Type the hero title letter by letter, line by line.
 let heroTypingStarted=false;
+let heroTypingWaiting=false;
 function startHeroTyping(){
- if(heroTypingStarted)return; heroTypingStarted=true;
+ if(heroTypingStarted)return;
+ const cmsState=document.documentElement.dataset.cmsReady;
+ if(!cmsState){
+  if(!heroTypingWaiting){
+   heroTypingWaiting=true;
+   addEventListener('azo:cms-ready',()=>{heroTypingWaiting=false;startHeroTyping()},{once:true});
+   setTimeout(()=>{
+    if(!heroTypingStarted && !document.documentElement.dataset.cmsReady){
+     document.documentElement.dataset.cmsReady='timeout';
+     heroTypingWaiting=false;
+     startHeroTyping();
+    }
+   },2600);
+  }
+  return;
+ }
+ heroTypingStarted=true;
  const words=$$('.hero h1 .word'); if(!words.length)return;
  const targets=words.map(w=>w.querySelector('em')||w);
  const originals=targets.map(t=>t.textContent);
@@ -121,5 +138,9 @@ const form=$('#lead-form');let formStep=0;function showStep(n){formStep=n;$$('.f
 if(form){showStep(0);$('.form-next',form)?.addEventListener('click',()=>{const req=$$('.form-step.active [required]',form);if(req.some(x=>!x.value.trim())){req.find(x=>!x.value.trim())?.focus();return}showStep(1)});$('.form-back',form)?.addEventListener('click',()=>showStep(0));form.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(form), lines=['Olá, equipe AZO! Gostaria de conversar sobre um projeto.',''];for(const [k,v] of fd.entries())if(v)lines.push(`${k}: ${v}`);const url='https://wa.me/5515997180355?text='+encodeURIComponent(lines.join('\n'));window.open(url,'_blank','noopener')})}
 
 // Firebase CMS is loaded only as a data layer. There is intentionally no public link to /admin/.
-import('./cms.js').catch(error=>console.warn('[AZO CMS] runtime indisponível; site estático mantido.',error));
+import('./cms.js').catch(error=>{
+ console.warn('[AZO CMS] runtime indisponível; site estático mantido.',error);
+ document.documentElement.dataset.cmsReady='failed';
+ dispatchEvent(new CustomEvent('azo:cms-ready',{detail:{ok:false}}));
+});
 })();
