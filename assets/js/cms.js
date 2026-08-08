@@ -178,6 +178,11 @@ addEventListener('keydown', event => {
   if (event.key === 'ArrowRight') moveProject(1);
 });
 
+function signalReady(ok) {
+  document.documentElement.dataset.cmsReady = ok ? 'true' : 'failed';
+  window.dispatchEvent(new CustomEvent('azo:cms-ready', { detail: { ok } }));
+}
+
 window.AZO_CMS = { assetMap, resolveAsset, canonicalAsset };
 
 (async () => {
@@ -185,8 +190,9 @@ window.AZO_CMS = { assetMap, resolveAsset, canonicalAsset };
     watchImages();
     await Promise.all([loadAssets(), loadPage()]);
     await loadProjects();
-    document.documentElement.dataset.cmsReady = 'true';
+    signalReady(true);
   } catch (error) {
     console.warn('[AZO CMS] Conteúdo dinâmico indisponível; site estático mantido.', error);
+    signalReady(false);
   }
 })();
