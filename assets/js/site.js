@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const $=(s,c=document)=>c.querySelector(s), $$=(s,c=document)=>[...c.querySelectorAll(s)];
-const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduced=false;
 
 // Loader (real sequence, bounded duration)
 const loader=$('.loader');
