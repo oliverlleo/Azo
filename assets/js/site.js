@@ -3,8 +3,7 @@
 const $=(s,c=document)=>c.querySelector(s), $$=(s,c=document)=>[...c.querySelectorAll(s)];
 const reduced=false;
 
-// AZO motion override: keep the site animated and make the hero calmer.
-// Remove the stylesheet's global reduced-motion killer so it cannot freeze the experience.
+// Keep the site's original motion available even when the OS requests reduced motion.
 for(const sheet of [...document.styleSheets]){
  try{
   for(let i=sheet.cssRules.length-1;i>=0;i--){
@@ -15,6 +14,13 @@ for(const sheet of [...document.styleSheets]){
 }
 const heroMotionStyle=document.createElement('style');
 heroMotionStyle.textContent=`
+.hero__slides{z-index:0!important}
+.hero__veil{z-index:1!important}
+.hero__blueprint,.hero__orb{z-index:2!important}
+.hero__blueprint{opacity:.18!important}
+.hero__blueprint path,.hero__blueprint line,.hero__blueprint rect{animation:blueprintShift 18s linear infinite!important}
+.hero__orb{animation:orbFloat 6s ease-in-out infinite!important}
+.hero__orb::after{animation:orbPulse 2.8s ease-in-out infinite!important}
 .hero-slide{opacity:0!important;clip-path:none!important;transform:scale(1.025)!important;transition:opacity 1.45s ease-in-out,transform 8s ease-out!important;will-change:opacity,transform}
 .hero-slide.active{opacity:1!important;clip-path:none!important;transform:scale(1)!important}
 .hero-slide.leaving{opacity:0!important;clip-path:none!important}
