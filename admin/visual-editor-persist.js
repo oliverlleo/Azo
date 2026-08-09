@@ -1,5 +1,7 @@
-import { auth, db } from '../assets/js/firebase-config.js';
+import { auth, db, storage } from '../assets/js/firebase-config.js';
 import { doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js';
+import { assetDocId } from '../assets/js/cms-core.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -64,10 +66,6 @@ function currentTextControl() {
   return $('#ve3-text-priority') || $('#ve3-precision-text') || $('#ve3-text');
 }
 
-function currentSaveButton() {
-  return $('#ve3-save-text-priority') || $('#ve3-precision-save-text') || $('#ve3-save-text');
-}
-
 function currentHrefControl() {
   return $('#ve3-href-priority') || $('#ve3-precision-href') || $('#ve3-href');
 }
@@ -105,18 +103,21 @@ async function readItems(id) {
 
 async function persistText(event) {
   const button = event.target.closest('#ve3-save-text-priority,#ve3-precision-save-text,#ve3-save-text');
-  if (!button) return;
+  if (!button) return false;
 
   bindSelectionMetadata();
   const textarea = currentTextControl();
-  if (!textarea?.dataset.persistKey) return;
+  if (!textarea?.dataset.persistKey) return false;
 
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
 
   const user = auth.currentUser;
-  if (!user) return toast('Sua sessão expirou. Entre novamente.', 'error');
+  if (!user) {
+    toast('Sua sessão expirou. Entre novamente.', 'error');
+    return true;
+  }
 
   const id = pageId();
   const key = textarea.dataset.persistKey;
@@ -142,7 +143,6 @@ async function persistText(event) {
       updatedBy: user.uid
     }, { merge: true });
 
-    // Do not claim success until Firestore returns the exact value we just wrote.
     const verifySnap = await getDoc(doc(db, 'sitePages', id));
     if (!verifySnap.exists()) throw new Error('O Firebase não devolveu o conteúdo salvo.');
     const verified = Array.isArray(verifySnap.data().items) ? verifySnap.data().items : [];
@@ -154,8 +154,6 @@ async function persistText(event) {
     }
 
     toast('Salvo e confirmado no Firebase.');
-
-    // Reload from the server instead of merely changing the preview locally.
     const reload = $('#ve3-reload');
     if (reload) setTimeout(() => reload.click(), 180);
   } catch (error) {
@@ -165,11 +163,121 @@ async function persistText(event) {
     button.disabled = false;
     button.textContent = 'Salvar alteração';
   }
+  return true;
 }
 
-// The side editor is rebuilt on every selection, so capture its metadata whenever it changes.
+function assetPath(img) {
+  const source = img?.dataset?.cmsSource || img?.getAttribute('src') || '';
+  if (source.startsWith('assets/')) return source;
+  if (source.startsWith('../assets/')) return source.slice(3);
+  try {
+    return decodeURIComponent(new URL(source, location.href).pathname).match(/(assets\/images\/.*)$/)?.[1] || '';
+  } catch {
+    return '';
+  }
+}
+
+function safeName(value = '') {
+  return value.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'imagem';
+}
+
+function upload(file, storagePath, progress) {
+  return new Promise((resolve, reject) => {
+    const task = uploadBytesResumable(ref(storage, storagePath), file, {
+      contentType: file.type,
+      cacheControl: 'public,max-age=31536000,immutable'
+    });
+    task.on('state_changed', snap => progress?.(snap.bytesTransferred / snap.totalBytes), reject, async () => {
+      resolve({ url: await getDownloadURL(task.snapshot.ref), storagePath: task.snapshot.ref.fullPath });
+    });
+  });
+}
+
+function currentImageInput() {
+  return $('#ve3-precision-file') || $('#ve3-file');
+}
+
+async function persistImage(event) {
+  const button = event.target.closest('#ve3-precision-save-image,#ve3-save-image');
+  if (!button) return false;
+
+  const input = currentImageInput();
+  const file = input?.files?.[0];
+  const docu = frameDoc();
+  const selectedImage = docu?.querySelector('img.ve3-selected');
+  const path = assetPath(selectedImage);
+  if (!file || !selectedImage || !path) return false;
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+
+  if (!file.type.startsWith('image/')) {
+    toast('Escolha um arquivo de imagem.', 'error');
+    return true;
+  }
+  if (file.size > 30 * 1024 * 1024) {
+    toast('A imagem deve ter no máximo 30 MB.', 'error');
+    return true;
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    toast('Sua sessão expirou. Entre novamente.', 'error');
+    return true;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Enviando...';
+
+  try {
+    const assetRef = doc(db, 'assets', assetDocId(path));
+    const before = await getDoc(assetRef);
+    const old = before.exists() ? before.data() : null;
+    const uploaded = await upload(file, `site/visual/${Date.now()}-${safeName(file.name)}`, fraction => {
+      button.textContent = `Enviando ${Math.round(fraction * 100)}%`;
+    });
+
+    await setDoc(assetRef, {
+      path,
+      url: uploaded.url,
+      storagePath: uploaded.storagePath,
+      fileName: file.name,
+      contentType: file.type,
+      size: file.size,
+      updatedAt: serverTimestamp(),
+      updatedBy: user.uid
+    });
+
+    const verify = await getDoc(assetRef);
+    if (!verify.exists() || verify.data().url !== uploaded.url || verify.data().path !== path) {
+      throw new Error('A nova imagem não foi confirmada no Firebase.');
+    }
+
+    if (old?.storagePath && old.storagePath !== uploaded.storagePath) {
+      deleteObject(ref(storage, old.storagePath)).catch(() => {});
+    }
+
+    toast('Imagem salva e confirmada no Firebase.');
+    const reload = $('#ve3-reload');
+    if (reload) setTimeout(() => reload.click(), 180);
+  } catch (error) {
+    console.error('[AZO visual editor] Falha ao persistir imagem', error);
+    toast(error.message || 'Não foi possível salvar a imagem no Firebase.', 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Trocar imagem';
+  }
+  return true;
+}
+
+async function interceptSave(event) {
+  if (await persistText(event)) return;
+  await persistImage(event);
+}
+
 const observer = new MutationObserver(() => queueMicrotask(bindSelectionMetadata));
 observer.observe(document.documentElement, { childList: true, subtree: true });
-document.addEventListener('click', persistText, true);
+document.addEventListener('click', interceptSave, true);
 document.addEventListener('DOMContentLoaded', bindSelectionMetadata);
 setInterval(bindSelectionMetadata, 500);
