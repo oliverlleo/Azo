@@ -1,5 +1,7 @@
 // Editor visual atual.
-// A V3 permite escolher todos os textos e imagens de um mesmo bloco,
-// inclusive imagens ocultas de carrosséis.
-import './visual-editor-v3.js?v=20260808-2232';
-import './visual-editor-v3-precision.js?v=20260808-2232';
+// Permite escolher todos os textos de um mesmo bloco e todas as imagens sobrepostas,
+// inclusive imagens ocultas de carrosséis. Quando o clique é exatamente sobre texto,
+// a edição de texto tem prioridade sobre imagens de fundo.
+import './visual-editor-v3.js?v=20260809-2034';
+import './visual-editor-v3-precision.js?v=20260809-2034';
+import './visual-editor-text-precision.js?v=20260809-2034';
