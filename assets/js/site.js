@@ -71,9 +71,30 @@ function startHeroTyping(){
  typeLine();
 }
 
-// Loader (real sequence, bounded duration)
+// Loader 0-100 appears only on the homepage. Internal pages open directly.
 const loader=$('.loader');
-if(loader){document.body.classList.add('is-loading');let n=0;const c=$('.loader__count');const timer=setInterval(()=>{n=Math.min(100,n+Math.floor(Math.random()*13)+5);if(c)c.textContent=String(n).padStart(3,'0')+'%';if(n>=100)clearInterval(timer)},90);setTimeout(()=>{loader.classList.add('done');document.body.classList.remove('is-loading');$('.hero')?.classList.add('scene-ready');startHeroTyping()},1450)}else{$('.hero')?.classList.add('scene-ready');startHeroTyping()}
+const isHomePage=/\/(?:index\.html)?$/i.test(location.pathname);
+if(loader && isHomePage){
+ document.body.classList.add('is-loading');
+ let n=0;
+ const c=$('.loader__count');
+ const timer=setInterval(()=>{
+  n=Math.min(100,n+Math.floor(Math.random()*13)+5);
+  if(c)c.textContent=String(n).padStart(3,'0')+'%';
+  if(n>=100)clearInterval(timer);
+ },90);
+ setTimeout(()=>{
+  loader.classList.add('done');
+  document.body.classList.remove('is-loading');
+  $('.hero')?.classList.add('scene-ready');
+  startHeroTyping();
+ },1450);
+}else{
+ if(loader)loader.style.display='none';
+ document.body.classList.remove('is-loading');
+ $('.hero')?.classList.add('scene-ready');
+ startHeroTyping();
+}
 
 // Header
 addEventListener('scroll',()=>$('.site-header')?.classList.toggle('scrolled',scrollY>24),{passive:true});
