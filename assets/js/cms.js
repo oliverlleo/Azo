@@ -1,5 +1,4 @@
-import { db } from './firebase-config.js';
-import { collection, doc, getDoc, getDocs } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
+import { db, collection, doc, getDoc, getDocs } from './firebase-config.js';
 import { normalizePageId, applyPageOverrides, normalizeAssetPath } from './cms-core.js';
 
 const assetMap = new Map();
@@ -12,7 +11,7 @@ function canonicalAsset(value) {
 }
 
 function isStorageUrl(value = '') {
-  return /firebasestorage\.googleapis\.com|firebasestorage\.app/i.test(value);
+  return /supabase\.co\/storage\/v1\/object\//i.test(value);
 }
 
 function resolveAsset(value) {
