@@ -2,7 +2,7 @@ const SUPABASE_URL='https://jjrsbbgnqfiezhokxbqz.supabase.co';
 const SUPABASE_KEY='sb_publishable_8LlV4bOH3d_axQBQLlHVkA_arQl6nu-';
 const SITE_BASE=new URL('../../',import.meta.url);
 const root=document.getElementById('obra-public-root');
-const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const siteHref=path=>new URL(String(path||'').replace(/^\/+/,''),SITE_BASE).href;
 const abs=value=>{if(!value)return'';try{return new URL(value,SITE_BASE).href}catch{return''}};
 const params=new URLSearchParams(location.search);
