@@ -165,7 +165,7 @@ const supabaseConfig={url:supabaseUrl,publishableKey:supabaseKey,projectRef:'jjr
 
 export {supabase,supabaseConfig,auth,db,storage,collection,doc,getDoc,getDocs,setDoc,deleteDoc,serverTimestamp,onAuthStateChanged,signInWithEmailAndPassword,signOut,sendPasswordResetEmail,ref,uploadBytesResumable,getDownloadURL,deleteObject,authReady};
 
-const OBRAS_ASSET_VERSION='20260810-1606';
+const OBRAS_ASSET_VERSION='20260810-1728';
 const isAdminRuntime=/\/admin\/?(?:index\.html)?$/i.test(location.pathname)||location.pathname.includes('/admin/');
 if(isAdminRuntime){
   import('../../admin/existing-projects.js').catch(error=>console.warn('[AZO Admin] Projetos existentes indisponíveis.',error));
