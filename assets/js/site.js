@@ -33,8 +33,25 @@ document.head.appendChild(heroMotionStyle);
 
 // Type the hero title letter by letter, line by line.
 let heroTypingStarted=false;
+let heroTypingWaiting=false;
 function startHeroTyping(){
- if(heroTypingStarted)return; heroTypingStarted=true;
+ if(heroTypingStarted)return;
+ const cmsState=document.documentElement.dataset.cmsReady;
+ if(!cmsState){
+  if(!heroTypingWaiting){
+   heroTypingWaiting=true;
+   addEventListener('azo:cms-ready',()=>{heroTypingWaiting=false;startHeroTyping()},{once:true});
+   setTimeout(()=>{
+    if(!heroTypingStarted && !document.documentElement.dataset.cmsReady){
+     document.documentElement.dataset.cmsReady='timeout';
+     heroTypingWaiting=false;
+     startHeroTyping();
+    }
+   },2600);
+  }
+  return;
+ }
+ heroTypingStarted=true;
  const words=$$('.hero h1 .word'); if(!words.length)return;
  const targets=words.map(w=>w.querySelector('em')||w);
  const originals=targets.map(t=>t.textContent);
@@ -54,9 +71,32 @@ function startHeroTyping(){
  typeLine();
 }
 
-// Loader (real sequence, bounded duration)
+// Loader 0-100 appears only on a direct homepage entry. Anchor navigation such as
+// index.html#metodo is navigation inside the site and must open immediately.
 const loader=$('.loader');
-if(loader){document.body.classList.add('is-loading');let n=0;const c=$('.loader__count');const timer=setInterval(()=>{n=Math.min(100,n+Math.floor(Math.random()*13)+5);if(c)c.textContent=String(n).padStart(3,'0')+'%';if(n>=100)clearInterval(timer)},90);setTimeout(()=>{loader.classList.add('done');document.body.classList.remove('is-loading');$('.hero')?.classList.add('scene-ready');startHeroTyping()},1450)}else{$('.hero')?.classList.add('scene-ready');startHeroTyping()}
+const isHomePage=/\/(?:index\.html)?$/i.test(location.pathname);
+const enteredHomeViaAnchor=isHomePage && Boolean(location.hash);
+if(loader && isHomePage && !enteredHomeViaAnchor){
+ document.body.classList.add('is-loading');
+ let n=0;
+ const c=$('.loader__count');
+ const timer=setInterval(()=>{
+  n=Math.min(100,n+Math.floor(Math.random()*13)+5);
+  if(c)c.textContent=String(n).padStart(3,'0')+'%';
+  if(n>=100)clearInterval(timer);
+ },90);
+ setTimeout(()=>{
+  loader.classList.add('done');
+  document.body.classList.remove('is-loading');
+  $('.hero')?.classList.add('scene-ready');
+  startHeroTyping();
+ },1450);
+}else{
+ if(loader)loader.style.display='none';
+ document.body.classList.remove('is-loading');
+ $('.hero')?.classList.add('scene-ready');
+ startHeroTyping();
+}
 
 // Header
 addEventListener('scroll',()=>$('.site-header')?.classList.toggle('scrolled',scrollY>24),{passive:true});
@@ -99,8 +139,26 @@ $('.project-prev')?.addEventListener('click',()=>setProject(pIdx-1,true));$('.pr
 // Magnetic buttons desktop
 if(!reduced && matchMedia('(pointer:fine)').matches){$$('[data-magnetic]').forEach(el=>{el.addEventListener('mousemove',e=>{const r=el.getBoundingClientRect();const x=(e.clientX-r.left-r.width/2)*.16,y=(e.clientY-r.top-r.height/2)*.16;el.style.transform=`translate(${x}px,${y}px)`});el.addEventListener('mouseleave',()=>el.style.transform='')})}
 
-// Local page transition
-$$('a[href]').forEach(a=>{const href=a.getAttribute('href');if(!href||href.startsWith('#')||href.startsWith('http')||href.startsWith('mailto:')||href.startsWith('tel:')||a.target==='_blank')return;a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();const pt=$('.page-transition');if(pt){pt.classList.add('in');setTimeout(()=>location.href=href,reduced?20:520)}else location.href=href})});
+// Direct navigation: no blue page transition. Same-home anchors scroll without reload.
+const normalizeNavPath=path=>path.replace(/\/index\.html$/i,'/')||'/';
+$$('a[href]').forEach(a=>{
+ const href=a.getAttribute('href');
+ if(!href||href.startsWith('http')||href.startsWith('mailto:')||href.startsWith('tel:')||a.target==='_blank')return;
+ a.addEventListener('click',e=>{
+  if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+  let target;
+  try{target=new URL(href,location.href)}catch(_){return}
+  const samePage=target.origin===location.origin&&normalizeNavPath(target.pathname)===normalizeNavPath(location.pathname);
+  if(samePage&&target.hash){
+   const section=document.querySelector(target.hash);
+   if(section){
+    e.preventDefault();
+    history.pushState(null,'',target.hash);
+    section.scrollIntoView({behavior:'smooth',block:'start'});
+   }
+  }
+ });
+});
 
 // Lightbox project galleries
 const galleries={
@@ -119,4 +177,11 @@ $$('[data-gallery]').forEach(el=>el.addEventListener('click',()=>openLb(el.datas
 // Two-step contact -> WhatsApp
 const form=$('#lead-form');let formStep=0;function showStep(n){formStep=n;$$('.form-step',form).forEach((s,i)=>s.classList.toggle('active',i===n));$$('.form-progress span',form).forEach((s,i)=>s.classList.toggle('active',i<=n))}
 if(form){showStep(0);$('.form-next',form)?.addEventListener('click',()=>{const req=$$('.form-step.active [required]',form);if(req.some(x=>!x.value.trim())){req.find(x=>!x.value.trim())?.focus();return}showStep(1)});$('.form-back',form)?.addEventListener('click',()=>showStep(0));form.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(form), lines=['Olá, equipe AZO! Gostaria de conversar sobre um projeto.',''];for(const [k,v] of fd.entries())if(v)lines.push(`${k}: ${v}`);const url='https://wa.me/5515997180355?text='+encodeURIComponent(lines.join('\n'));window.open(url,'_blank','noopener')})}
+
+// CMS is loaded only as a data layer. There is intentionally no public link to /admin/.
+import('./cms.js').catch(error=>{
+ console.warn('[AZO CMS] runtime indisponível; site estático mantido.',error);
+ document.documentElement.dataset.cmsReady='failed';
+ dispatchEvent(new CustomEvent('azo:cms-ready',{detail:{ok:false}}));
+});
 })();
