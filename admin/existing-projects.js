@@ -1,12 +1,4 @@
-import { auth, db } from '../assets/js/firebase-config.js';
-import {
-  doc,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
-import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
+import { auth, db, doc, getDoc, setDoc, deleteDoc, serverTimestamp, onAuthStateChanged } from '../assets/js/firebase-config.js';
 
 const BUILTINS = [
   { key:'AS', title:'Casa AS', category:'Arquitetura residencial', order:10 },
@@ -136,7 +128,7 @@ async function saveProject(event) {
       published:$('#existing-project-published').checked,
       order:base.order,
       updatedAt:serverTimestamp(),
-      updatedBy:user.uid
+      updatedBy:user.id || user.uid
     },{merge:true});
     closeModal();
     await load();
@@ -163,7 +155,7 @@ async function toggleProject(key) {
       published:!project.published,
       order:base.order,
       updatedAt:serverTimestamp(),
-      updatedBy:user.uid
+      updatedBy:user.id || user.uid
     },{merge:true});
     await load();
     toast(project.published ? 'Projeto removido do site.' : 'Projeto voltou a aparecer no site.');
