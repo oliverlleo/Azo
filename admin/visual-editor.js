@@ -10,3 +10,7 @@ import './visual-editor-v3.js?v=20260809-2038';
 import './visual-editor-v3-precision.js?v=20260809-2038';
 import './visual-editor-text-precision.js?v=20260809-2038';
 import './visual-editor-persist.js?v=20260809-2038';
+
+// A troca de "Página do site" deve recarregar somente a prévia e nunca tirar
+// o usuário do modo Editar visualmente.
+import './visual-editor-navigation-stability.js?v=20260810-0740';
