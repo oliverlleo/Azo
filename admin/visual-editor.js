@@ -1,3 +1,7 @@
+// Estabiliza a sessão visual do admin para evitar voltar à tela de login
+// durante restauração/revalidação do Firebase ou ao retornar para a aba.
+import './auth-ui-stability.js?v=20260810-0723';
+
 // Editor visual atual.
 // Permite escolher todos os textos de um mesmo bloco e todas as imagens sobrepostas,
 // inclusive imagens ocultas de carrosséis. Quando o clique é exatamente sobre texto,
