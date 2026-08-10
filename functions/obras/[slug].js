@@ -83,11 +83,11 @@ function highlights(row) {
 }
 
 function story(row) {
-  const hasIntro = Boolean(row.intro_body);
-  const hasChallenge = Boolean(row.challenge_body);
-  const hasSolution = Boolean(row.solution_body);
-  const hasHighlights = Array.isArray(row.highlights) && row.highlights.length > 0;
-  const hasGallery = Array.isArray(row.gallery) && row.gallery.length > 0;
+  const hasIntro = Boolean(row.intro_body?.trim());
+  const hasChallenge = Boolean(row.challenge_body?.trim());
+  const hasSolution = Boolean(row.solution_body?.trim());
+  const hasHighlights = Array.isArray(row.highlights) && row.highlights.some(Boolean);
+  const hasGallery = Array.isArray(row.gallery) && row.gallery.some(item => item?.url);
   if (!hasIntro && !hasChallenge && !hasSolution && !hasHighlights) return '';
 
   let number = 0;
@@ -101,7 +101,6 @@ function story(row) {
   return `<section class="obra-story"><div class="wrap obra-story__grid">
     <aside class="obra-story__aside obra-reveal">
       <div class="eyebrow">Por dentro da obra</div>
-      <p class="section-copy">${escapeHtml(row.excerpt || 'Conheça o contexto, as decisões e os detalhes desta obra AZO.')}</p>
       <nav class="obra-story__index" aria-label="Nesta obra">${index.join('')}</nav>
     </aside>
     <div class="obra-story__body">
