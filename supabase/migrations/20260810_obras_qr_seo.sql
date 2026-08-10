@@ -4,7 +4,7 @@
 create table if not exists public.obras (
   id uuid primary key default gen_random_uuid(),
   internal_name text not null,
-  slug text not null unique,
+  slug text not null unique check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
   title text not null,
   eyebrow text not null default 'Obra AZO',
   excerpt text not null default '',
@@ -20,10 +20,10 @@ create table if not exists public.obras (
   challenge_body text not null default '',
   solution_title text not null default 'A solução',
   solution_body text not null default '',
-  highlights jsonb not null default '[]'::jsonb,
-  services jsonb not null default '[]'::jsonb,
-  related_obra_ids jsonb not null default '[]'::jsonb,
-  gallery jsonb not null default '[]'::jsonb,
+  highlights jsonb not null default '[]'::jsonb check (jsonb_typeof(highlights) = 'array'),
+  services jsonb not null default '[]'::jsonb check (jsonb_typeof(services) = 'array'),
+  related_obra_ids jsonb not null default '[]'::jsonb check (jsonb_typeof(related_obra_ids) = 'array'),
+  gallery jsonb not null default '[]'::jsonb check (jsonb_typeof(gallery) = 'array'),
   hero_media_type text not null default 'image' check (hero_media_type in ('image','video')),
   hero_image_url text not null default '',
   hero_image_storage_path text not null default '',
@@ -66,6 +66,22 @@ create table if not exists public.obra_redirects (
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+create or replace function public.touch_obras_updated_at()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_obras_updated_at on public.obras;
+create trigger trg_obras_updated_at
+before update on public.obras
+for each row execute function public.touch_obras_updated_at();
 
 create index if not exists obras_public_idx on public.obras (published, show_in_obras_index, sort_order);
 create index if not exists obras_menu_idx on public.obras (published, show_in_menu, sort_order);
