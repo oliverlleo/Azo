@@ -1,7 +1,7 @@
 const SUPABASE_URL='https://jjrsbbgnqfiezhokxbqz.supabase.co';
 const SUPABASE_KEY='sb_publishable_8LlV4bOH3d_axQBQLlHVkA_arQl6nu-';
 const SITE_ORIGIN='https://www.azocc.com.br';
-const headers={apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,Accept:'application/json'};
+const headers={apikey:SUPABASE_KEY,Accept:'application/json'};
 const esc=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 async function obras(){const response=await fetch(`${SUPABASE_URL}/rest/v1/obras?published=eq.true&archived=eq.false&allow_index=eq.true&select=slug,updated_at,show_in_obras_index&order=sort_order.asc`,{headers});if(!response.ok)throw new Error(`Supabase ${response.status}`);return response.json();}
 function xmlFor(urls){return`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(item=>`  <url>\n    <loc>${esc(item.loc)}</loc>${item.lastmod?`\n    <lastmod>${esc(new Date(item.lastmod).toISOString())}</lastmod>`:''}\n  </url>`).join('\n')}\n</urlset>`;}
