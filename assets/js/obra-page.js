@@ -46,7 +46,7 @@
         .obra-story__index a{position:relative;overflow:hidden}
         .obra-story__index a.is-active{padding-left:10px;color:var(--rust)}
         .obra-story__index a.is-active::after{content:"";position:absolute;left:0;bottom:-1px;height:2px;width:100%;background:currentColor;transform-origin:left center;animation:obraStoryProgress 6.5s linear both}
-        .obra-story__body.is-paused+.obra-story__index a.is-active::after{animation-play-state:paused}
+        .obra-story.is-paused .obra-story__index a.is-active::after{animation-play-state:paused}
         .obra-story-gallery-preview{display:grid;gap:24px}
         .obra-story-gallery-preview h2{margin-bottom:0}
         .obra-story-gallery-preview__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -70,10 +70,32 @@
         galleryPanel=document.createElement('article');
         galleryPanel.className='obra-story-block obra-story-gallery-preview';
         galleryPanel.id='obra-story-galeria';
-        galleryPanel.innerHTML=`
-          <h2>A obra<br>em detalhes.</h2>
-          <div class="obra-story-gallery-preview__grid">${images.map(img=>`<img src="${img.currentSrc||img.src}" alt="${img.alt||''}" loading="lazy">`).join('')}</div>
-          <div class="obra-story-gallery-preview__footer"><span>${$$('.obra-gallery__item',gallerySection).length} imagens</span><a href="#galeria" data-open-full-gallery>Ver galeria completa ↓</a></div>`;
+
+        const title=document.createElement('h2');
+        title.innerHTML='A obra<br>em detalhes.';
+        galleryPanel.appendChild(title);
+
+        const previewGrid=document.createElement('div');
+        previewGrid.className='obra-story-gallery-preview__grid';
+        images.forEach(source=>{
+          const image=document.createElement('img');
+          image.src=source.currentSrc||source.src;
+          image.alt=source.alt||'';
+          image.loading='lazy';
+          previewGrid.appendChild(image);
+        });
+        galleryPanel.appendChild(previewGrid);
+
+        const footer=document.createElement('div');
+        footer.className='obra-story-gallery-preview__footer';
+        const count=document.createElement('span');
+        count.textContent=`${$$('.obra-gallery__item',gallerySection).length} imagens`;
+        const openGallery=document.createElement('a');
+        openGallery.href='#galeria';
+        openGallery.dataset.openFullGallery='';
+        openGallery.textContent='Ver galeria completa ↓';
+        footer.append(count,openGallery);
+        galleryPanel.appendChild(footer);
         body.appendChild(galleryPanel);
       }
     }
@@ -152,7 +174,6 @@
       timer=setTimeout(()=>switchTo((activeIndex+1)%entries.length),CYCLE_MS);
     }
 
-    entries.forEach(({link},index=>{}));
     entries.forEach(({link},index)=>{
       link.addEventListener('click',event=>{
         event.preventDefault();
@@ -165,10 +186,12 @@
       gallerySection.scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
     });
 
-    story.addEventListener('pointerenter',()=>{paused=true;clearTimeout(timer);});
-    story.addEventListener('pointerleave',()=>{paused=false;schedule();});
-    story.addEventListener('focusin',()=>{paused=true;clearTimeout(timer);});
-    story.addEventListener('focusout',event=>{if(!story.contains(event.relatedTarget)){paused=false;schedule();}});
+    const pause=()=>{paused=true;story.classList.add('is-paused');clearTimeout(timer);};
+    const resume=()=>{paused=false;story.classList.remove('is-paused');schedule();};
+    story.addEventListener('pointerenter',pause);
+    story.addEventListener('pointerleave',resume);
+    story.addEventListener('focusin',pause);
+    story.addEventListener('focusout',event=>{if(!story.contains(event.relatedTarget))resume();});
     document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer);else schedule();});
 
     restartProgress(entries[activeIndex].link);
