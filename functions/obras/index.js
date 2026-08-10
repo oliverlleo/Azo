@@ -1,7 +1,7 @@
 const SUPABASE_URL='https://jjrsbbgnqfiezhokxbqz.supabase.co';
 const SUPABASE_KEY='sb_publishable_8LlV4bOH3d_axQBQLlHVkA_arQl6nu-';
 const SITE_ORIGIN='https://www.azocc.com.br';
-const headers={apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,Accept:'application/json'};
+const headers={apikey:SUPABASE_KEY,Accept:'application/json'};
 const esc=(value='')=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const absolute=value=>{if(!value)return'';try{return new URL(value,SITE_ORIGIN).href}catch{return''}};
 async function rows(){const response=await fetch(`${SUPABASE_URL}/rest/v1/obras?published=eq.true&archived=eq.false&show_in_obras_index=eq.true&select=id,slug,title,eyebrow,excerpt,location_public,work_type,hero_image_url,hero_image_alt,show_in_menu,menu_label,sort_order&order=sort_order.asc`,{headers});if(!response.ok)throw new Error(`Supabase ${response.status}`);return response.json();}
