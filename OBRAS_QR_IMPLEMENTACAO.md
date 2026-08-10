@@ -53,7 +53,8 @@ A tela **Obras** oferece:
 - visibilidade opcional no menu desktop/mobile;
 - nome específico no menu;
 - indexação individual;
-- QR individual com UTM;
+- QR individual compacto;
+- rastreio de origem QR sem inflar a matriz;
 - download PNG e SVG.
 
 ## Página pública
@@ -86,20 +87,33 @@ Inclui:
 - vídeo `muted`, `loop` e `playsinline`;
 - nenhum loader AZO ou transição azul.
 
-## QR
+## QR compacto
 
-O QR aponta para a própria página canônica com parâmetros UTM:
+O QR **não codifica mais a URL longa com três parâmetros UTM**. Ele codifica somente uma rota curta da própria obra:
 
 ```text
-https://www.azocc.com.br/obras/{slug}/
-  ?utm_source=qr
-  &utm_medium=offline
-  &utm_campaign={campanha}
+https://www.azocc.com.br/obras/?q={slug}
 ```
 
-A canonical continua sem parâmetros.
+No ambiente em que o site estiver hospedado, a origem e a pasta-base são calculadas pelo próprio AZO Studio. Portanto o QR não depende de um domínio fixo gravado no JavaScript.
 
-Alterar conteúdo, mídia, SEO ou visibilidade não muda o QR.
+Ao receber `?q={slug}`, o endpoint de Obras valida que a obra está publicada e redireciona para a página oficial adicionando o rastreio **depois do scan**:
+
+```text
+/obras/{slug}/
+  ?utm_source=qr
+  &utm_medium=offline
+  &utm_campaign={campanha-ou-slug}
+```
+
+Com isso:
+
+- o QR contém menos caracteres e fica visualmente menos denso;
+- o gerador usa nível de correção `L`, adequado para impressão limpa e com matriz menor;
+- o rastreio de acesso físico continua disponível;
+- a canonical continua sem parâmetros;
+- o botão Copiar link e os downloads PNG/SVG usam o mesmo endereço curto;
+- alterar conteúdo, mídia ou SEO não muda o QR enquanto o slug for preservado.
 
 ### Proteção de endereço
 
