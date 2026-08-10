@@ -5,7 +5,8 @@ const root=document.getElementById('obra-public-root');
 const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const siteHref=path=>new URL(String(path||'').replace(/^\/+/,''),SITE_BASE).href;
 const abs=value=>{if(!value)return'';try{return new URL(value,SITE_BASE).href}catch{return''}};
-const slug=new URLSearchParams(location.search).get('obra')?.trim().toLowerCase()||'';
+const params=new URLSearchParams(location.search);
+const slug=(params.get('obra')||params.get('q')||'').trim().toLowerCase();
 
 async function query(path){
   const controller=new AbortController();
