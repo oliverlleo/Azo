@@ -1,8 +1,18 @@
 const SUPABASE_URL='https://jjrsbbgnqfiezhokxbqz.supabase.co';
 const SUPABASE_KEY='sb_publishable_8LlV4bOH3d_axQBQLlHVkA_arQl6nu-';
 
+const MODULE_URL=new URL(import.meta.url);
+const SITE_ROOT=new URL('../../',MODULE_URL);
+const CONTENT_ROOT=new URL('conteudos/',SITE_ROOT);
+const ASSET_ROOT=new URL('assets/',SITE_ROOT);
+const IS_GITHUB_PAGES=/\.github\.io$/i.test(location.hostname);
+
 const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const contentHref=()=>'/conteudos/';
+const contentHref=()=>CONTENT_ROOT.href;
+const articleHref=slug=>IS_GITHUB_PAGES
+  ? `${CONTENT_ROOT.href}?artigo=${encodeURIComponent(slug)}`
+  : new URL(`${encodeURIComponent(slug)}/`,CONTENT_ROOT).href;
+const isHomePage=()=>location.pathname===SITE_ROOT.pathname||location.pathname===new URL('index.html',SITE_ROOT).pathname;
 
 function installNav(){
   if(location.pathname.includes('/admin/')) return;
@@ -12,7 +22,7 @@ function installNav(){
     link.href=contentHref();
     link.textContent='Conteúdos';
     link.dataset.azoContentLink='1';
-    if(location.pathname.startsWith('/conteudos')) link.classList.add('active');
+    if(location.pathname.startsWith(CONTENT_ROOT.pathname)) link.classList.add('active');
     const about=[...desktop.querySelectorAll('a')].find(a=>/sobre/i.test(a.textContent||''));
     desktop.insertBefore(link,about||desktop.querySelector('.nav-cta')||null);
   }
@@ -50,8 +60,8 @@ async function latestPosts(){
 
 function card(post,index=0){
   const cat=post.content_categories?.name||'Conteúdo';
-  const image=post.cover_url||'assets/images/project-feature.webp';
-  return `<a class="content-card content-reveal" data-delay="${Math.min(index+1,3)}" href="/conteudos/${encodeURIComponent(post.slug)}/">
+  const image=post.cover_url||new URL('images/project-feature.webp',ASSET_ROOT).href;
+  return `<a class="content-card content-reveal" data-delay="${Math.min(index+1,3)}" href="${articleHref(post.slug)}">
     <div class="content-card__media"><img src="${esc(image)}" alt="${esc(post.cover_alt||post.title)}" loading="lazy"></div>
     <div class="content-card__body">
       <div class="content-card__meta"><span>${esc(cat)}</span></div>
@@ -72,8 +82,7 @@ function reveal(root=document){
 }
 
 async function installHomeTeaser(){
-  const isHome=/\/(?:index\.html)?$/i.test(location.pathname);
-  if(!isHome || document.querySelector('.content-home-teaser')) return;
+  if(!isHomePage() || document.querySelector('.content-home-teaser')) return;
   let posts=[];
   try{posts=await latestPosts();}catch(error){console.warn('[AZO Conteúdos] teaser indisponível.',error);return;}
   if(!posts.length) return;
@@ -86,13 +95,13 @@ async function installHomeTeaser(){
       <p>Arquitetura, interiores, planejamento e obra explicados com a mesma clareza que orienta os projetos da AZO.</p>
     </div>
     <div class="content-grid">${posts.map(card).join('')}</div>
-    <div style="margin-top:34px"><a class="button" href="/conteudos/">Ver todos os conteúdos <span class="arrow">→</span></a></div>
+    <div style="margin-top:34px"><a class="button" href="${contentHref()}">Ver todos os conteúdos <span class="arrow">→</span></a></div>
   </div>`;
   const target=document.querySelector('section.about-teaser')||document.querySelector('section.method')||document.querySelector('footer');
   target?.parentNode?.insertBefore(section,target);
 
   if(!document.querySelector('link[href*="conteudos.css"]')){
-    const css=document.createElement('link');css.rel='stylesheet';css.href='assets/css/conteudos.css';document.head.appendChild(css);
+    const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('css/conteudos.css',ASSET_ROOT).href;document.head.appendChild(css);
   }
   reveal(section);
 }
