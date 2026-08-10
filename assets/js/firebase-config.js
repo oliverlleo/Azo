@@ -5,6 +5,7 @@ export * from './supabase-config.js';
 if(location.pathname.includes('/admin/')){
   import('../../admin/content-blog.js').catch(error=>console.warn('[AZO Studio] módulo Conteúdos indisponível.',error));
   import('../../admin/content-blog-stability.js').catch(error=>console.warn('[AZO Studio] estabilidade de Conteúdos indisponível.',error));
+  import('../../admin/content-routing-compat.js').catch(error=>console.warn('[AZO Studio] rotas de Conteúdos indisponíveis.',error));
 }else{
   import('./content-nav.js').catch(error=>console.warn('[AZO Conteúdos] integração pública indisponível.',error));
 }
