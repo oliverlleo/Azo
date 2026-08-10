@@ -1,5 +1,5 @@
 // Estabiliza a sessão visual do admin para evitar voltar à tela de login
-// durante restauração/revalidação do Firebase ou ao retornar para a aba.
+// durante restauração/revalidação do backend ou ao retornar para a aba.
 import './auth-ui-stability.js?v=20260810-0723';
 
 // Editor visual atual.
@@ -9,6 +9,10 @@ import './auth-ui-stability.js?v=20260810-0723';
 import './visual-editor-v3.js?v=20260809-2038';
 import './visual-editor-v3-precision.js?v=20260809-2038';
 import './visual-editor-text-precision.js?v=20260809-2038';
+
+// Carrega a página do site como HTML dentro da prévia. Isso evita iframe branco
+// causado por redirect/bloqueio do host e mantém assets relativos funcionando.
+import './visual-editor-preview-loader.js?v=20260810-0902';
 
 // Deve ser carregado ANTES da persistência para guardar a página atual e impedir
 // que o recarregamento pós-save volte a prévia/painel para a página inicial.
