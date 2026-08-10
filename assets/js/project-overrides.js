@@ -1,5 +1,4 @@
-import { db } from './firebase-config.js';
-import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
+import { db, collection, getDocs } from './firebase-config.js';
 
 const ORDER = ['AS','HL','JT','MN','SE','EF'];
 const DEFAULTS = {
