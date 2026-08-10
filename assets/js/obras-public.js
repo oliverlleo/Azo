@@ -1,9 +1,16 @@
 import { supabase } from './supabase-config.js';
 
+const SITE_BASE = new URL('../../', import.meta.url);
+const obraHref = slug => {
+  const url = new URL('obras/', SITE_BASE);
+  url.searchParams.set('obra', slug);
+  return url.href;
+};
+
 function insertMenuLink(container, obra, before) {
   if (!container || container.querySelector(`[data-obra-menu="${CSS.escape(obra.id)}"]`)) return;
   const link = document.createElement('a');
-  link.href = `/obras/${encodeURIComponent(obra.slug)}/`;
+  link.href = obraHref(obra.slug);
   link.textContent = obra.menu_label || obra.title;
   link.dataset.obraMenu = obra.id;
   if (before) container.insertBefore(link, before);
