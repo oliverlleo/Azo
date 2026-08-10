@@ -24,10 +24,8 @@ const obraUrl = slug => {
   return url.href;
 };
 const qrUrl = obra => {
-  const url = new URL(obraUrl(obra.slug));
-  url.searchParams.set('utm_source', 'qr');
-  url.searchParams.set('utm_medium', 'offline');
-  url.searchParams.set('utm_campaign', obra.qr_campaign || obra.slug);
+  const url = new URL('obras/', SITE_BASE);
+  url.searchParams.set('q', String(obra?.slug || '').trim());
   return url.href;
 };
 
@@ -409,7 +407,7 @@ function renderForm() {
     </div><div class="obra-fields" style="margin-top:15px">
       ${field('obra-menu-label', 'Nome no menu', current.menu_label, { help: 'Usado apenas quando “Aparecer no menu” estiver ligado.' })}
       ${field('obra-sort', 'Ordem', current.sort_order, { type: 'number' })}
-      ${field('obra-qr-campaign', 'Campanha do QR', current.qr_campaign, { help: 'Identificador UTM para medir acessos físicos.' })}
+      ${field('obra-qr-campaign', 'Campanha do QR', current.qr_campaign, { help: 'Identificador opcional usado no rastreio após o scan. Não aumenta o tamanho do QR.' })}
     </div></section>
     <section class="obra-form-card obra-danger"><h4>Arquivamento</h4><p class="help">Arquivar remove a obra das áreas públicas sem apagar o cadastro nem o histórico do endereço.</p><button class="btn btn-danger" id="obra-archive-current">${current.archived ? 'Restaurar obra' : 'Arquivar obra'}</button></section>`;
 
@@ -836,7 +834,7 @@ async function renderQr() {
   try {
     const QR = await getQr();
     root.innerHTML = await QR.toString(url, {
-      type: 'svg', margin: 2, errorCorrectionLevel: 'M',
+      type: 'svg', margin: 2, errorCorrectionLevel: 'L',
       color: { dark: '#0d2f35', light: '#ffffff' }
     });
   } catch {
@@ -864,7 +862,7 @@ async function downloadQrPng() {
   try {
     const QR = await getQr();
     const data = await QR.toDataURL(qrUrl(current), {
-      width: 1024, margin: 3, errorCorrectionLevel: 'M',
+      width: 1024, margin: 3, errorCorrectionLevel: 'L',
       color: { dark: '#0d2f35', light: '#ffffff' }
     });
     download(`qr-${current.slug}.png`, data);
@@ -878,7 +876,7 @@ async function downloadQrSvg() {
   try {
     const QR = await getQr();
     const svg = await QR.toString(qrUrl(current), {
-      type: 'svg', margin: 3, errorCorrectionLevel: 'M',
+      type: 'svg', margin: 3, errorCorrectionLevel: 'L',
       color: { dark: '#0d2f35', light: '#ffffff' }
     });
     const blob = new Blob([svg], { type: 'image/svg+xml' });
