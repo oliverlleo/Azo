@@ -1,0 +1,48 @@
+name: Conteudos Smoke
+
+on:
+  pull_request:
+    paths:
+      - 'admin/content-blog*.js'
+      - 'assets/js/content-nav.js'
+      - 'assets/js/conteudos-*.js'
+      - 'functions/**'
+      - 'conteudos/**'
+      - '_routes.json'
+      - 'sitemap.xml'
+      - 'feed.xml'
+      - 'supabase/migrations/**'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          node --check admin/content-blog.js
+          node --check admin/content-blog-stability.js
+          node --check assets/js/content-nav.js
+          node --check assets/js/conteudos-fallback.js
+          node --check assets/js/conteudos-public.js
+          node --check 'functions/conteudos/[[path]].js'
+          node --check functions/conteudos/index.js
+          node --check functions/sitemap.xml.js
+          node --check functions/feed.xml.js
+      - name: Check JSON and XML fallbacks
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('_routes.json','utf8'))"
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          ET.parse('sitemap.xml')
+          ET.parse('feed.xml')
+          print('SEO fallbacks valid')
+          PY
+      - name: Verify required editorial files
+        run: |
+          test -f assets/css/conteudos.css
+          test -f conteudos/index.html
+          test -f supabase/migrations/20260810134000_azo_content_hub.sql

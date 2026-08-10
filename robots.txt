@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: https://www.azocc.com.br/sitemap.xml
+Disallow: /admin/
+Sitemap: https://azocc.com.br/sitemap.xml
