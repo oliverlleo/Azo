@@ -1,3 +1,15 @@
+// A navegação entre páginas deve ser imediata. O loader AZO continua existindo
+// somente na entrada da página inicial; a antiga camada azul de transição não.
+if (typeof document !== 'undefined') {
+  const removePageTransition = () => {
+    document.querySelectorAll('.page-transition').forEach(element => element.remove());
+  };
+  removePageTransition();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', removePageTransition, { once: true });
+  }
+}
+
 const SKIP_TEXT_TAGS = new Set(['SCRIPT','STYLE','NOSCRIPT','SVG','CANVAS','TEMPLATE']);
 
 function normalizePageId(pathname = location.pathname) {
