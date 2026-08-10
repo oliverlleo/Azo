@@ -1,6 +1,6 @@
 import { supabase, onAuthStateChanged, auth } from '../assets/js/supabase-config.js';
 
-const SITE_ORIGIN = 'https://www.azocc.com.br';
+const SITE_BASE = new URL('../', import.meta.url);
 const BUCKET = 'azo-media';
 const VIDEO_LIMIT = 80 * 1024 * 1024;
 
@@ -18,8 +18,18 @@ const slugify = value => String(value || '')
   .replace(/^-+|-+$/g, '')
   .slice(0, 80);
 const textLines = value => String(value || '').split('\n').map(line => line.trim()).filter(Boolean);
-const obraUrl = slug => `${SITE_ORIGIN}/obras/${encodeURIComponent(slug)}/`;
-const qrUrl = obra => `${obraUrl(obra.slug)}?utm_source=qr&utm_medium=offline&utm_campaign=${encodeURIComponent(obra.qr_campaign || obra.slug)}`;
+const obraUrl = slug => {
+  const url = new URL('obras/', SITE_BASE);
+  url.searchParams.set('obra', String(slug || '').trim());
+  return url.href;
+};
+const qrUrl = obra => {
+  const url = new URL(obraUrl(obra.slug));
+  url.searchParams.set('utm_source', 'qr');
+  url.searchParams.set('utm_medium', 'offline');
+  url.searchParams.set('utm_campaign', obra.qr_campaign || obra.slug);
+  return url.href;
+};
 
 let user = null;
 let rows = [];
@@ -244,7 +254,7 @@ function renderList() {
       </div>
       <div class="obra-row__actions">
         <button class="btn btn-ghost" data-edit-obra="${row.id}">Editar</button>
-        ${row.published ? `<a class="btn btn-ghost" href="/obras/${escapeHtml(row.slug)}/" target="_blank" rel="noopener">Abrir ↗</a>` : ''}
+        ${row.published ? `<a class="btn btn-ghost" href="${escapeHtml(obraUrl(row.slug))}" target="_blank" rel="noopener">Abrir ↗</a>` : ''}
         <button class="btn btn-ghost" data-duplicate-obra="${row.id}">Duplicar</button>
         <button class="btn btn-danger" data-archive-obra="${row.id}">${row.archived ? 'Restaurar' : 'Arquivar'}</button>
       </div>
@@ -636,7 +646,10 @@ function updateSeoPreview() {
   const title = current.seo_title || `${current.title || 'Título da obra'} | AZO Criação & Construção`;
   const description = current.meta_description || current.excerpt || 'Descrição da obra para resultados de busca.';
   const preview = $('#obra-seo-preview');
-  if (preview) preview.innerHTML = `<small>azocc.com.br › obras › ${escapeHtml(current.slug || 'slug')}</small><h5>${escapeHtml(title)}</h5><p>${escapeHtml(description)}</p>`;
+  if (preview) {
+    const previewUrl = new URL(obraUrl(current.slug || 'slug'));
+    preview.innerHTML = `<small>${escapeHtml(previewUrl.host)} › obras › ${escapeHtml(current.slug || 'slug')}</small><h5>${escapeHtml(title)}</h5><p>${escapeHtml(description)}</p>`;
+  }
 
   const checks = [
     ['Título público', current.title], ['Slug', current.slug], ['Resumo', current.excerpt],
@@ -792,7 +805,7 @@ function openPublicPreview() {
   if (!current?.slug) return toast('Defina o slug primeiro.', 'error');
   if (!isPersisted()) return toast('Salve a obra primeiro. A prévia lateral já mostra o layout enquanto você edita.', 'error');
   if (!current.published) return toast('Esta obra ainda é rascunho. Use a prévia lateral ou publique para abrir a página pública.', 'error');
-  window.open(`/obras/${current.slug}/`, '_blank', 'noopener');
+  window.open(obraUrl(current.slug), '_blank', 'noopener');
 }
 
 async function getQr() {
