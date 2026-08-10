@@ -9,6 +9,7 @@ let pendingPlan=null;
 let pendingDeletes=[];
 let mounting=false;
 let dirty=false;
+let replayingAction=false;
 
 function ensureStyle(){
   if(document.querySelector('link[data-azo-floorplan-style]'))return;
@@ -130,6 +131,18 @@ const observer=new MutationObserver(()=>{
   if(mediaPanel()&&document.querySelector('#obras-editor.open'))queueMicrotask(()=>mount());
 });
 observer.observe(document.documentElement,{childList:true,subtree:true});
+
+document.addEventListener('click',async event=>{
+  const action=event.target.closest('#obra-save,#obra-back,#obra-preview');
+  if(!action||!dirty||replayingAction)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const saved=await save();
+  if(!saved)return;
+  replayingAction=true;
+  action.click();
+  replayingAction=false;
+},true);
 
 document.addEventListener('click',event=>{
   if(event.target.closest('[data-obra-tab="midia"]'))setTimeout(()=>mount(true),0);
