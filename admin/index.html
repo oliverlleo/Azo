@@ -8,6 +8,15 @@
   <title>AZO Studio — Administração</title>
   <link rel="stylesheet" href="admin.css">
   <style>[hidden]{display:none!important}</style>
+  <script type="importmap">
+  {
+    "imports": {
+      "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js": "./supabase-auth-shim.js",
+      "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js": "./supabase-firestore-shim.js",
+      "https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js": "./supabase-storage-shim.js"
+    }
+  }
+  </script>
 </head>
 <body>
   <main class="login-screen" id="login-screen">
@@ -16,7 +25,7 @@
       <div class="login-copy">
         <p class="eyebrow">Área restrita</p>
         <h1>Controle total do site, em um só lugar.</h1>
-        <p>Textos, títulos, imagens e projetos com acesso protegido pelo Firebase Authentication.</p>
+        <p>Textos, títulos, imagens e projetos com acesso protegido pelo Supabase Auth.</p>
       </div>
       <form id="login-form" class="login-form" autocomplete="on">
         <label>E-mail<input id="login-email" name="email" type="email" autocomplete="username" required></label>
@@ -47,12 +56,12 @@
     <section class="workspace">
       <header class="topbar">
         <div><p class="eyebrow" id="view-kicker">Painel administrativo</p><h2 id="view-title">Visão geral</h2></div>
-        <div class="topbar-actions"><span class="sync-status" id="sync-status"><i></i>Firebase conectado</span><button class="icon-button" id="mobile-menu" aria-label="Abrir menu">☰</button></div>
+        <div class="topbar-actions"><span class="sync-status" id="sync-status"><i></i>Supabase conectado</span><button class="icon-button" id="mobile-menu" aria-label="Abrir menu">☰</button></div>
       </header>
 
       <div class="view active" id="view-dashboard">
         <div class="hero-panel">
-          <div><p class="eyebrow">AZO Studio</p><h3>Seu site, sem depender de código para atualizar o conteúdo.</h3><p>As alterações salvas aqui são lidas pelo site público diretamente do Firestore e as novas imagens ficam no Firebase Storage.</p></div>
+          <div><p class="eyebrow">AZO Studio</p><h3>Seu site, sem depender de código para atualizar o conteúdo.</h3><p>As alterações ficam no PostgreSQL do Supabase e as novas imagens ficam no Supabase Storage.</p></div>
           <div class="hero-badge"><span>LIVE</span><small>Conteúdo conectado</small></div>
         </div>
         <div class="stat-grid" id="dashboard-stats">
@@ -63,7 +72,7 @@
         </div>
         <div class="dashboard-grid">
           <article class="panel"><div class="panel-head"><div><p class="eyebrow">Acesso rápido</p><h3>O que você quer editar?</h3></div></div><div class="quick-grid"><button data-go="content"><b>✎</b><span><strong>Textos e títulos</strong><small>Altere qualquer texto das páginas</small></span><i>→</i></button><button data-go="images"><b>▧</b><span><strong>Imagens</strong><small>Troque qualquer uma das 87 imagens</small></span><i>→</i></button><button data-go="projects"><b>◇</b><span><strong>Projetos</strong><small>Crie novas galerias completas</small></span><i>→</i></button></div></article>
-          <article class="panel"><div class="panel-head"><div><p class="eyebrow">Proteção</p><h3>Área administrativa isolada</h3></div></div><div class="security-summary"><div><i>✓</i><span><strong>Sem link no site público</strong><small>O painel não aparece na navegação do site.</small></span></div><div><i>✓</i><span><strong>Login obrigatório</strong><small>Não existe cadastro público de usuários.</small></span></div><div><i>✓</i><span><strong>Regras de escrita</strong><small>Somente UIDs presentes em <code>admins</code> podem alterar dados.</small></span></div></div></article>
+          <article class="panel"><div class="panel-head"><div><p class="eyebrow">Proteção</p><h3>Área administrativa isolada</h3></div></div><div class="security-summary"><div><i>✓</i><span><strong>Sem link no site público</strong><small>O painel não aparece na navegação do site.</small></span></div><div><i>✓</i><span><strong>Login obrigatório</strong><small>Não existe cadastro público de usuários.</small></span></div><div><i>✓</i><span><strong>RLS no banco e Storage</strong><small>Somente administradores ativos podem alterar conteúdo.</small></span></div></div></article>
         </div>
       </div>
 
@@ -95,7 +104,7 @@
       <div class="view" id="view-security">
         <div class="security-grid">
           <article class="panel"><div class="panel-head"><div><p class="eyebrow">Conta</p><h3>Administrador conectado</h3></div></div><dl class="data-list"><div><dt>E-mail</dt><dd id="security-email">—</dd></div><div><dt>UID</dt><dd id="security-uid">—</dd></div><div><dt>Permissão</dt><dd><span class="status ok">Administrador ativo</span></dd></div></dl><button class="btn btn-ghost" id="reset-password">Enviar redefinição de senha</button></article>
-          <article class="panel"><div class="panel-head"><div><p class="eyebrow">Arquitetura de proteção</p><h3>Sem senha gravada no site</h3></div></div><div class="security-summary"><div><i>1</i><span><strong>Firebase Authentication</strong><small>A senha é validada pelo Firebase, não pelo JavaScript do site.</small></span></div><div><i>2</i><span><strong>Whitelist por UID</strong><small>Mesmo um usuário autenticado não recebe acesso administrativo sem documento em <code>admins/{uid}</code>.</small></span></div><div><i>3</i><span><strong>Firestore + Storage Rules</strong><small>As regras bloqueiam gravações fora do painel autorizado.</small></span></div></div></article>
+          <article class="panel"><div class="panel-head"><div><p class="eyebrow">Arquitetura de proteção</p><h3>Sem senha gravada no site</h3></div></div><div class="security-summary"><div><i>1</i><span><strong>Supabase Auth</strong><small>A senha é validada pelo serviço de autenticação e não pelo JavaScript do site.</small></span></div><div><i>2</i><span><strong>Administrador autorizado</strong><small>Mesmo autenticado, o usuário precisa estar ativo na tabela protegida de administradores.</small></span></div><div><i>3</i><span><strong>PostgreSQL RLS + Storage RLS</strong><small>As políticas do servidor bloqueiam alterações para qualquer pessoa sem permissão.</small></span></div></div></article>
         </div>
       </div>
     </section>
@@ -121,8 +130,8 @@
   <input type="file" id="asset-file-input" accept="image/*" hidden>
   <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
   <script type="module" src="friendly-ui.js"></script>
-  <script type="module" src="admin.js"></script>
-  <script type="module" src="existing-projects.js"></script>
-  <script type="module" src="visual-editor.js?v=20260809-2038"></script>
+  <script type="module" src="admin.js?v=20260810-0835"></script>
+  <script type="module" src="existing-projects.js?v=20260810-0835"></script>
+  <script type="module" src="visual-editor.js?v=20260810-0835"></script>
 </body>
 </html>
