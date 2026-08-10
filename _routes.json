@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "include": [
+    "/conteudos/*",
+    "/sitemap.xml",
+    "/feed.xml"
+  ],
+  "exclude": []
+}
