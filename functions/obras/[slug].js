@@ -38,12 +38,34 @@ function serviceUrl(name = '') {
   return '/servicos.html';
 }
 
-function menuLinks(rows) {
-  return (rows || [])
-    .filter(row => row.published && row.show_in_menu && !row.archived)
-    .sort((a, b) => (a.sort_order || 9999) - (b.sort_order || 9999))
-    .map(row => `<a href="/obras/${escapeHtml(row.slug)}/">${escapeHtml(row.menu_label || row.title)}</a>`)
-    .join('');
+function hasGallery(row) {
+  return Array.isArray(row.gallery) && row.gallery.some(item => item?.url);
+}
+function hasStory(row) {
+  return Boolean(
+    row.intro_body?.trim() || row.challenge_body?.trim() || row.solution_body?.trim() ||
+    (Array.isArray(row.highlights) && row.highlights.some(Boolean))
+  );
+}
+function hasPlan(row) {
+  const plan = row.interactive_plan;
+  return Boolean(
+    plan?.enabled === true && plan?.imageUrl && Array.isArray(plan.hotspots) &&
+    plan.hotspots.some(item => Array.isArray(item?.images) && item.images.some(image => image?.url))
+  );
+}
+function obraSectionLinks(row) {
+  return [
+    [hasGallery(row), '#galeria', 'A obra em detalhes'],
+    [hasStory(row), '#conteudo', 'Por dentro da obra'],
+    [hasPlan(row), '#planta-interativa', 'Explore a obra']
+  ].filter(([show]) => show).map(([, href, label]) => `<a href="${href}">${label}</a>`).join('');
+}
+function firstSection(row) {
+  if (hasGallery(row)) return '#galeria';
+  if (hasStory(row)) return '#conteudo';
+  if (hasPlan(row)) return '#planta-interativa';
+  return '#contato-obra';
 }
 
 function facts(row) {
@@ -173,28 +195,28 @@ function render(row, allRows) {
   const description = row.meta_description || row.excerpt || `Conheça ${row.title}, obra apresentada pela AZO.`;
   const ogImage = absoluteUrl(row.og_image_url || row.hero_video_poster_url || row.hero_image_url);
   const robots = row.allow_index ? 'index,follow,max-image-preview:large' : 'noindex,follow';
-  const extraMenu = menuLinks(allRows);
   const overlay = Math.max(0, Math.min(80, Number(row.hero_overlay) || 34));
   const schema = structuredData(row, canonical, title, description, ogImage);
+  const sectionLinks = obraSectionLinks(row);
 
   return `<!doctype html><html lang="pt-BR"><head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0d2f35">
     <title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="robots" content="${robots}"><link rel="canonical" href="${escapeHtml(canonical)}">
     <meta property="og:type" content="website"><meta property="og:locale" content="pt_BR"><meta property="og:site_name" content="AZO Criação & Construção"><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${escapeHtml(canonical)}">${ogImage ? `<meta property="og:image" content="${escapeHtml(ogImage)}">` : ''}<meta name="twitter:card" content="summary_large_image">
-    <link rel="stylesheet" href="/assets/css/site.css"><link rel="stylesheet" href="/assets/css/obra-page.css?v=20260810-1645"><script type="application/ld+json">${safeJson(schema)}</script>
+    <link rel="stylesheet" href="/assets/css/site.css"><link rel="stylesheet" href="/assets/css/obra-page.css?v=20260810-2108"><script type="application/ld+json">${safeJson(schema)}</script>
   </head><body class="obra-page">
-    <header class="site-header"><a class="brand" href="/" aria-label="AZO — início"><img src="/assets/images/logo-azo.png" alt="AZO Criação & Construção" width="760" height="213"></a><nav class="nav" aria-label="Navegação principal"><a href="/servicos.html">Serviços</a><a href="/projetos.html">Projetos</a>${extraMenu}<a href="/index.html#metodo">Como trabalhamos</a><a href="/sobre.html">Sobre</a><a class="nav-cta" href="/contato.html">Solicitar orçamento</a></nav><button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false"><span></span></button></header>
-    <nav class="mobile-nav" aria-label="Navegação móvel"><a href="/servicos.html">Serviços</a><a href="/projetos.html">Projetos</a>${extraMenu}<a href="/index.html#metodo">Como trabalhamos</a><a href="/sobre.html">Sobre</a><a href="/contato.html">Solicitar orçamento</a><small>Arquitetura · interiores · gestão de obras</small></nav>
+    <header class="site-header obra-site-header"><a class="brand" href="/" aria-label="AZO — início"><img src="/assets/images/logo-azo.png" alt="AZO Criação & Construção" width="760" height="213"></a><nav class="nav" aria-label="Navegação desta obra">${sectionLinks}<a class="nav-cta" href="/contato.html">Solicite um contato</a></nav><button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false"><span></span></button></header>
+    <nav class="mobile-nav obra-mobile-nav" aria-label="Navegação desta obra">${sectionLinks}<a href="/contato.html">Solicite um contato</a><small>${escapeHtml(row.title || 'Obra AZO')}</small></nav>
     <main>
-      <section class="obra-hero"><div class="obra-hero__media">${heroMedia(row)}</div><div class="obra-hero__veil" style="opacity:${Math.max(.5, overlay / 60)}"></div><div class="obra-hero__blueprint"><svg viewBox="0 0 1600 900" preserveAspectRatio="none" aria-hidden="true"><path d="M70 170H510V65H980V245H1530"/><path d="M170 805V515H615V335H1210V745H1515"/><rect x="280" y="190" width="620" height="420"/><path d="M900 190v420M280 400h620M540 190v210M690 400v210"/></svg></div><div class="obra-hero__orb"></div><div class="wrap obra-hero__content"><div class="obra-hero__eyebrow">${escapeHtml(row.eyebrow || 'Obra AZO')}</div><h1>${escapeHtml(row.title)}</h1><div class="obra-hero__bottom">${row.excerpt ? `<p class="obra-hero__intro">${escapeHtml(row.excerpt)}</p>` : '<div></div>'}${facts(row)}</div></div><a class="obra-scroll" href="#conteudo" aria-label="Conhecer a obra">↓</a></section>
+      <section class="obra-hero"><div class="obra-hero__media">${heroMedia(row)}</div><div class="obra-hero__veil" style="opacity:${Math.max(.5, overlay / 60)}"></div><div class="obra-hero__blueprint"><svg viewBox="0 0 1600 900" preserveAspectRatio="none" aria-hidden="true"><path d="M70 170H510V65H980V245H1530"/><path d="M170 805V515H615V335H1210V745H1515"/><rect x="280" y="190" width="620" height="420"/><path d="M900 190v420M280 400h620M540 190v210M690 400v210"/></svg></div><div class="obra-hero__orb"></div><div class="wrap obra-hero__content"><div class="obra-hero__eyebrow">${escapeHtml(row.eyebrow || 'Obra AZO')}</div><h1>${escapeHtml(row.title)}</h1><div class="obra-hero__bottom">${row.excerpt ? `<p class="obra-hero__intro">${escapeHtml(row.excerpt)}</p>` : '<div></div>'}${facts(row)}</div></div><a class="obra-scroll" href="${firstSection(row)}" aria-label="Conhecer a obra">↓</a></section>
       <div class="wrap obra-breadcrumb"><a href="/">Início</a> / <a href="/obras/">Obras</a> / ${escapeHtml(row.title)}</div>
-      ${story(row)}${gallerySection(row)}${servicesSection(row)}
-      <section class="obra-cta"><div class="wrap"><div class="obra-cta__card obra-reveal"><h2>${escapeHtml(row.cta_title || 'Planejando uma obra?')}</h2><div><p>${escapeHtml(row.cta_text || 'Converse com a AZO sobre o seu terreno, imóvel ou obra.')}</p><a class="button" href="${escapeHtml(safeHref(row.cta_url))}">${escapeHtml(row.cta_label || 'Solicitar uma conversa')} <span class="arrow">↗</span></a></div></div></div></section>
+      ${gallerySection(row)}${story(row)}${servicesSection(row)}
+      <section class="obra-cta" id="contato-obra"><div class="wrap"><div class="obra-cta__card obra-reveal"><h2>${escapeHtml(row.cta_title || 'Planejando uma obra?')}</h2><div><p>${escapeHtml(row.cta_text || 'Converse com a AZO sobre o seu terreno, imóvel ou obra.')}</p><a class="button" href="${escapeHtml(safeHref(row.cta_url))}">${escapeHtml(row.cta_label || 'Solicitar uma conversa')} <span class="arrow">↗</span></a></div></div></div></section>
       ${relatedSection(row, allRows)}
     </main>
     <footer class="footer"><div class="wrap"><div class="footer-grid"><div><img class="footer-logo" src="/assets/images/logo-azo.png" alt="AZO Criação & Construção"><p style="max-width:430px;margin-top:24px">Arquitetura, interiores e gestão de obras residenciais em Sorocaba — do conceito à entrega.</p></div><div><h4>Navegação</h4><a href="/servicos.html">Serviços</a><a href="/projetos.html">Projetos</a><a href="/obras/">Obras</a><a href="/sobre.html">Sobre a AZO</a><a href="/contato.html">Contato</a></div><div><h4>Contato</h4><a href="tel:+5515997180355">(15) 99718-0355</a><a href="mailto:contato@azocc.com.br">contato@azocc.com.br</a><p>Rua Horácio Cenci, 75 · Sorocaba/SP</p></div></div><div class="footer-bottom"><span>© 2026 AZO Criação & Construção</span><span>Projeto · compatibilização · obra</span></div></div></footer>
     <div class="obra-lightbox" role="dialog" aria-modal="true" aria-label="Galeria da obra"><div class="obra-lightbox__top"><div><div class="obra-lightbox__title"></div><div class="obra-lightbox__count"></div></div><button class="obra-lightbox__close" aria-label="Fechar">×</button></div><div class="obra-lightbox__stage"><img alt=""></div><div class="obra-lightbox__controls"><button class="obra-lightbox__prev">← Anterior</button><button class="obra-lightbox__next">Próxima →</button></div></div>
-    <script src="/assets/js/obra-page.js?v=20260810-1740" defer></script>
+    <script src="/assets/js/obra-page.js?v=20260810-2108" defer></script>
   </body></html>`;
 }
 
@@ -236,7 +258,7 @@ export async function onRequest(context) {
     console.error('[AZO Obras] Falha ao renderizar obra.', error);
     return new Response('Temporariamente indisponível.', {
       status: 503,
-      headers: { 'content-type': 'text/plain; charset=UTF-8', 'cache-control': 'no-store', 'x-content-type-options':'nosniff' }
+      headers: { 'content-type': 'text/plain; charset=UTF-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }
     });
   }
 }
