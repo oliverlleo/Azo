@@ -17,7 +17,7 @@
     if(document.querySelector('link[data-obra-floorplan-public]'))return;
     const link=document.createElement('link');
     link.rel='stylesheet';
-    link.href=new URL('../css/obra-floorplan.css?v=20260810-1740',SCRIPT_URL).href;
+    link.href=new URL('../css/obra-floorplan.css?v=20260810-2112',SCRIPT_URL).href;
     link.dataset.obraFloorplanPublic='1';
     document.head.appendChild(link);
   }
@@ -136,10 +136,14 @@
       ensureStyle();
       const section=createSection(plan);
       const story=document.querySelector('.obra-story');
-      const next=story||document.querySelector('.obra-gallery,.obra-services,.obra-cta,.footer');
-      if(next)next.parentNode.insertBefore(section,next);
-      else document.querySelector('main')?.appendChild(section);
-      document.querySelector('.obra-scroll')?.setAttribute('href','#planta-interativa');
+      const gallery=document.querySelector('.obra-gallery');
+      const previous=story||gallery;
+      if(previous)previous.parentNode.insertBefore(section,previous.nextSibling);
+      else{
+        const next=document.querySelector('.obra-services,.obra-cta,.footer');
+        if(next)next.parentNode.insertBefore(section,next);
+        else document.querySelector('main')?.appendChild(section);
+      }
       requestAnimationFrame(()=>section.classList.add('visible'));
     }catch(error){console.warn('[AZO Planta] Conteúdo interativo indisponível.',error);}
   }
