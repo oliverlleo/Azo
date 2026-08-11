@@ -120,9 +120,21 @@ supabase.auth.onAuthStateChange((_event,session)=>{
   for(const listener of authListeners){ try{listener(currentUser);}catch(error){console.error(error);} }
 });
 function onAuthStateChanged(_auth,callback){
-  let active=true; authListeners.add(callback);
-  authReady.then(()=>{if(active)callback(normalizeUser(currentUser));});
-  return ()=>{active=false;authListeners.delete(callback);};
+  let active=true;
+  let emitted=false;
+  let lastUid=null;
+  const emit=user=>{
+    if(!active)return;
+    const normalized=normalizeUser(user);
+    const uid=normalized?.id||normalized?.uid||null;
+    if(emitted&&uid===lastUid)return;
+    emitted=true;
+    lastUid=uid;
+    callback(normalized);
+  };
+  authListeners.add(emit);
+  authReady.then(()=>emit(currentUser));
+  return ()=>{active=false;authListeners.delete(emit);};
 }
 async function signInWithEmailAndPassword(_auth,email,password){
   const {data,error}=await supabase.auth.signInWithPassword({email,password});
@@ -165,7 +177,7 @@ const supabaseConfig={url:supabaseUrl,publishableKey:supabaseKey,projectRef:'jjr
 
 export {supabase,supabaseConfig,auth,db,storage,collection,doc,getDoc,getDocs,setDoc,deleteDoc,serverTimestamp,onAuthStateChanged,signInWithEmailAndPassword,signOut,sendPasswordResetEmail,ref,uploadBytesResumable,getDownloadURL,deleteObject,authReady};
 
-const OBRAS_ASSET_VERSION='20260810-2218';
+const OBRAS_ASSET_VERSION='20260810-2238';
 const isAdminRuntime=/\/admin\/?(?:index\.html)?$/i.test(location.pathname)||location.pathname.includes('/admin/');
 if(isAdminRuntime){
   import('../../admin/existing-projects.js').catch(error=>console.warn('[AZO Admin] Projetos existentes indisponíveis.',error));
