@@ -216,7 +216,7 @@ function render(row, allRows) {
     </main>
     <footer class="footer"><div class="wrap"><div class="footer-grid"><div><img class="footer-logo" src="/assets/images/logo-azo.png" alt="AZO Criação & Construção"><p style="max-width:430px;margin-top:24px">Arquitetura, interiores e gestão de obras residenciais em Sorocaba — do conceito à entrega.</p></div><div><h4>Navegação</h4><a href="/servicos.html">Serviços</a><a href="/projetos.html">Projetos</a><a href="/obras/">Obras</a><a href="/sobre.html">Sobre a AZO</a><a href="/contato.html">Contato</a></div><div><h4>Contato</h4><a href="tel:+5515997180355">(15) 99718-0355</a><a href="mailto:contato@azocc.com.br">contato@azocc.com.br</a><p>Rua Horácio Cenci, 75 · Sorocaba/SP</p></div></div><div class="footer-bottom"><span>© 2026 AZO Criação & Construção</span><span>Projeto · compatibilização · obra</span></div></div></footer>
     <div class="obra-lightbox" role="dialog" aria-modal="true" aria-label="Galeria da obra"><div class="obra-lightbox__top"><div><div class="obra-lightbox__title"></div><div class="obra-lightbox__count"></div></div><button class="obra-lightbox__close" aria-label="Fechar">×</button></div><div class="obra-lightbox__stage"><img alt=""></div><div class="obra-lightbox__controls"><button class="obra-lightbox__prev">← Anterior</button><button class="obra-lightbox__next">Próxima →</button></div></div>
-    <script src="/assets/js/obra-page.js?v=20260810-2205" defer></script>
+    <script src="/assets/js/obra-page.js?v=20260810-2218" defer></script>
   </body></html>`;
 }
 
