@@ -17,7 +17,6 @@ const slugify = value => String(value || '')
   .replace(/[^a-z0-9]+/g, '-')
   .replace(/^-+|-+$/g, '')
   .slice(0, 80);
-const textLines = value => String(value || '').split('\n').map(line => line.trim()).filter(Boolean);
 const obraUrl = slug => {
   const url = new URL('obras/', SITE_BASE);
   url.searchParams.set('obra', String(slug || '').trim());
@@ -361,10 +360,6 @@ function renderForm() {
         ${field('obra-solution-body', 'Solução', current.solution_body, { textarea: true, rows: 8 })}
       </div>
     </section>
-    <section class="obra-form-card"><h4>Decisões e serviços</h4><div class="obra-fields">
-      ${field('obra-highlights', 'Decisões principais — uma por linha', (current.highlights || []).join('\n'), { textarea: true, rows: 6 })}
-      ${field('obra-services', 'Serviços AZO — um por linha', (current.services || []).join('\n'), { textarea: true, rows: 6 })}
-    </div></section>
     <section class="obra-form-card"><h4>CTA comercial</h4><div class="obra-fields">
       ${field('obra-cta-title', 'Título', current.cta_title)}
       ${field('obra-cta-label', 'Texto do botão', current.cta_label)}
@@ -464,8 +459,6 @@ function bindForm() {
     });
   }
 
-  $('#obra-highlights')?.addEventListener('input', event => { current.highlights = textLines(event.target.value); markDirty(); });
-  $('#obra-services')?.addEventListener('input', event => { current.services = textLines(event.target.value); markDirty(); });
   $('#obra-image-file')?.addEventListener('change', event => uploadHeroImage(event.target.files?.[0]));
   $('#obra-video-file')?.addEventListener('change', event => uploadHeroVideo(event.target.files?.[0]));
   $('#obra-poster-file')?.addEventListener('change', event => uploadPoster(event.target.files?.[0]));
