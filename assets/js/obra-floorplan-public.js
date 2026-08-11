@@ -14,12 +14,25 @@
   }
 
   function ensureStyle(){
-    if(document.querySelector('link[data-obra-floorplan-public]'))return;
-    const link=document.createElement('link');
-    link.rel='stylesheet';
-    link.href=new URL('../css/obra-floorplan.css?v=20260810-2150',SCRIPT_URL).href;
-    link.dataset.obraFloorplanPublic='1';
-    document.head.appendChild(link);
+    if(!document.querySelector('link[data-obra-floorplan-public]')){
+      const link=document.createElement('link');
+      link.rel='stylesheet';
+      link.href=new URL('../css/obra-floorplan.css?v=20260810-2218',SCRIPT_URL).href;
+      link.dataset.obraFloorplanPublic='1';
+      document.head.appendChild(link);
+    }
+    if(!document.querySelector('style[data-obra-floorplan-legibility]')){
+      const style=document.createElement('style');
+      style.dataset.obraFloorplanLegibility='1';
+      style.textContent=`
+        .obra-floorplan__viewer-copy{z-index:4!important;background:linear-gradient(0deg,rgba(4,18,21,.98) 0%,rgba(4,18,21,.74) 46%,rgba(4,18,21,.18) 80%,rgba(4,18,21,0) 100%)!important}
+        .obra-floorplan__viewer-copy span{display:inline-flex!important;align-items:center!important;width:max-content!important;max-width:100%!important;padding:6px 9px!important;border-radius:999px!important;background:rgba(4,18,21,.9)!important;border:1px solid rgba(255,255,255,.14)!important;color:#f0cf9f!important;box-shadow:0 6px 18px rgba(0,0,0,.2)!important}
+        .obra-floorplan__viewer-copy h3{text-shadow:0 2px 18px rgba(0,0,0,.72)!important}
+        .obra-floorplan__viewer-bottom{position:relative!important;z-index:8!important;background:#061e22!important;isolation:isolate!important}
+        .obra-floorplan__viewer-status>div>span{display:inline-flex!important;padding:4px 7px!important;border-radius:999px!important;background:rgba(215,183,144,.1)!important;color:#f0cf9f!important}
+      `;
+      document.head.appendChild(style);
+    }
   }
 
   function normalize(raw){
@@ -102,9 +115,7 @@
     </div>`;
 
     const CYCLE_MS=5200;
-    const slides=plan.hotspots.flatMap((hotspot,hotspotIndex)=>hotspot.images.map((image,imageIndex)=>({
-      hotspotIndex,imageIndex,image,label:hotspot.label
-    })));
+    const slides=plan.hotspots.flatMap((hotspot,hotspotIndex)=>hotspot.images.map((image,imageIndex)=>({hotspotIndex,imageIndex,image,label:hotspot.label})));
     let activeHotspot=slides[0]?.hotspotIndex??0;
     let activeImage=slides[0]?.imageIndex??0;
     let locked=false;
@@ -134,11 +145,7 @@
     function currentImage(){return currentHotspot()?.images?.[activeImage];}
     function currentSlideIndex(){return slides.findIndex(item=>item.hotspotIndex===activeHotspot&&item.imageIndex===activeImage);}
 
-    function setGlobalSlide(slide){
-      if(!slide)return;
-      activeHotspot=slide.hotspotIndex;
-      activeImage=slide.imageIndex;
-    }
+    function setGlobalSlide(slide){if(!slide)return;activeHotspot=slide.hotspotIndex;activeImage=slide.imageIndex;}
 
     function setHotspotState(){
       buttons.forEach((button,index)=>{
@@ -155,14 +162,18 @@
       if(!progress)return;
       progress.style.animation='none';
       void progress.offsetWidth;
-      if(!reduceMotion&&!locked&&!modalOpen&&!document.hidden){
-        progress.style.animation=`obraFloorplanProgress ${CYCLE_MS}ms linear forwards`;
-      }
+      if(!reduceMotion&&!locked&&!modalOpen&&!document.hidden)progress.style.animation=`obraFloorplanProgress ${CYCLE_MS}ms linear forwards`;
+    }
+
+    function centerActiveThumb(){
+      const active=thumbs.querySelector('.is-active');
+      if(!active)return;
+      const target=active.offsetLeft-(thumbs.clientWidth-active.offsetWidth)/2;
+      thumbs.scrollTo({left:Math.max(0,target),behavior:reduceMotion?'auto':'smooth'});
     }
 
     function renderThumbs(){
       thumbs.innerHTML=slides.map((slide,index)=>`<button type="button" class="obra-floorplan__thumb ${slide.hotspotIndex===activeHotspot&&slide.imageIndex===activeImage?'is-active':''}" data-floorplan-thumb-hotspot="${slide.hotspotIndex}" data-floorplan-thumb-image="${slide.imageIndex}" aria-label="Mostrar ${esc(slide.label)}, imagem ${slide.imageIndex+1}"><img src="${esc(slide.image.url)}" alt="" loading="lazy" decoding="async"><span>${String(index+1).padStart(2,'0')}</span></button>`).join('');
-
       thumbs.querySelectorAll('[data-floorplan-thumb-hotspot]').forEach(button=>button.addEventListener('click',event=>{
         event.stopPropagation();
         activeHotspot=Number(button.dataset.floorplanThumbHotspot)||0;
@@ -170,8 +181,7 @@
         renderImage();
         schedule();
       }));
-
-      thumbs.querySelector('.is-active')?.scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'nearest',inline:'center'});
+      requestAnimationFrame(centerActiveThumb);
     }
 
     function renderImage(){
@@ -184,7 +194,6 @@
       next.className='obra-floorplan__media';
       next.innerHTML=`<img src="${esc(image.url)}" alt="${esc(image.alt)}"><div class="obra-floorplan__viewer-copy"><span>Ambiente ${String(activeHotspot+1).padStart(2,'0')}</span><h3>${esc(hotspot.label)}</h3>${image.caption?`<p>${esc(image.caption)}</p>`:''}</div>`;
       stage.insertBefore(next,expand);
-
       if(previous){
         if(reduceMotion)previous.remove();
         else{
@@ -192,7 +201,6 @@
           previous.animate([{opacity:1},{opacity:0}],{duration:260,fill:'forwards'}).finished.catch(()=>{}).then(()=>previous.remove());
         }
       }
-
       label.textContent=hotspot.label;
       const globalIndex=Math.max(0,currentSlideIndex());
       count.textContent=`${String(globalIndex+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`;
@@ -213,23 +221,9 @@
       },CYCLE_MS);
     }
 
-    function selectHotspot(index){
-      activeHotspot=index;
-      activeImage=0;
-      locked=true;
-      hint?.remove();
-      clearTimeout(timer);
-      renderImage();
-    }
-
-    function modalSequence(){
-      return slides;
-    }
-
-    function modalSequenceIndex(){
-      const sequence=modalSequence();
-      return sequence.findIndex(item=>item.hotspotIndex===activeHotspot&&item.imageIndex===activeImage);
-    }
+    function selectHotspot(index){activeHotspot=index;activeImage=0;locked=true;hint?.remove();clearTimeout(timer);renderImage();}
+    function modalSequence(){return slides;}
+    function modalSequenceIndex(){return modalSequence().findIndex(item=>item.hotspotIndex===activeHotspot&&item.imageIndex===activeImage);}
 
     function renderModal(){
       const hotspot=currentHotspot();
