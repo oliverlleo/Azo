@@ -5,7 +5,7 @@
   if(!document.querySelector('script[data-obra-floorplan-runtime]')){
     const runtime=document.createElement('script');
     const source=document.currentScript?.src||new URL('assets/js/obra-page.js',location.origin+'/').href;
-    runtime.src=new URL('./obra-floorplan-public.js?v=20260810-2205',source).href;
+    runtime.src=new URL('./obra-floorplan-public.js?v=20260810-2218',source).href;
     runtime.defer=true;
     runtime.dataset.obraFloorplanRuntime='1';
     document.head.appendChild(runtime);
@@ -41,30 +41,40 @@
     heroVideo.defaultMuted=true;
     heroVideo.loop=true;
     heroVideo.playsInline=true;
+    heroVideo.autoplay=true;
     heroVideo.preload='auto';
     heroVideo.setAttribute('muted','');
     heroVideo.setAttribute('playsinline','');
     heroVideo.setAttribute('loop','');
+    heroVideo.setAttribute('autoplay','');
 
+    let retryTimer=null;
     const tryPlay=()=>{
-      if(reduceMotion||document.hidden)return;
-      heroVideo.autoplay=true;
-      heroVideo.setAttribute('autoplay','');
+      if(document.hidden)return;
+      clearTimeout(retryTimer);
       const attempt=heroVideo.play();
-      if(attempt?.catch)attempt.catch(()=>{});
+      if(attempt?.catch){
+        attempt.catch(()=>{
+          retryTimer=setTimeout(()=>{
+            if(!document.hidden)heroVideo.play().catch(()=>{});
+          },450);
+        });
+      }
     };
 
-    if(reduceMotion){
-      heroVideo.pause();
-      heroVideo.removeAttribute('autoplay');
-    }else{
-      if(heroVideo.readyState===0)heroVideo.load();
-      heroVideo.addEventListener('loadeddata',tryPlay,{once:true});
-      heroVideo.addEventListener('canplay',tryPlay,{once:true});
-      addEventListener('pageshow',tryPlay);
-      document.addEventListener('visibilitychange',()=>{if(!document.hidden)tryPlay();});
-      tryPlay();
-    }
+    if(heroVideo.readyState===0)heroVideo.load();
+    heroVideo.addEventListener('loadedmetadata',tryPlay,{once:true});
+    heroVideo.addEventListener('loadeddata',tryPlay,{once:true});
+    heroVideo.addEventListener('canplay',tryPlay);
+    heroVideo.addEventListener('canplaythrough',tryPlay,{once:true});
+    heroVideo.addEventListener('stalled',()=>setTimeout(tryPlay,300));
+    heroVideo.addEventListener('suspend',()=>{if(heroVideo.paused)setTimeout(tryPlay,150);});
+    heroVideo.addEventListener('error',()=>{
+      console.error('[AZO Obras] O navegador não conseguiu decodificar o vídeo principal.',heroVideo.error);
+    });
+    addEventListener('pageshow',tryPlay);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)tryPlay();});
+    tryPlay();
   }
 
   function setupStorySwitcher(){
