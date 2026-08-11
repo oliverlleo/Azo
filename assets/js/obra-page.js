@@ -5,7 +5,7 @@
   if(!document.querySelector('script[data-obra-floorplan-runtime]')){
     const runtime=document.createElement('script');
     const source=document.currentScript?.src||new URL('assets/js/obra-page.js',location.origin+'/').href;
-    runtime.src=new URL('./obra-floorplan-public.js?v=20260810-2150',source).href;
+    runtime.src=new URL('./obra-floorplan-public.js?v=20260810-2205',source).href;
     runtime.defer=true;
     runtime.dataset.obraFloorplanRuntime='1';
     document.head.appendChild(runtime);
@@ -37,8 +37,34 @@
 
   const heroVideo=$('.obra-hero video');
   if(heroVideo){
-    if(reduceMotion){heroVideo.pause();heroVideo.removeAttribute('autoplay');}
-    else heroVideo.play().catch(()=>{});
+    heroVideo.muted=true;
+    heroVideo.defaultMuted=true;
+    heroVideo.loop=true;
+    heroVideo.playsInline=true;
+    heroVideo.preload='auto';
+    heroVideo.setAttribute('muted','');
+    heroVideo.setAttribute('playsinline','');
+    heroVideo.setAttribute('loop','');
+
+    const tryPlay=()=>{
+      if(reduceMotion||document.hidden)return;
+      heroVideo.autoplay=true;
+      heroVideo.setAttribute('autoplay','');
+      const attempt=heroVideo.play();
+      if(attempt?.catch)attempt.catch(()=>{});
+    };
+
+    if(reduceMotion){
+      heroVideo.pause();
+      heroVideo.removeAttribute('autoplay');
+    }else{
+      if(heroVideo.readyState===0)heroVideo.load();
+      heroVideo.addEventListener('loadeddata',tryPlay,{once:true});
+      heroVideo.addEventListener('canplay',tryPlay,{once:true});
+      addEventListener('pageshow',tryPlay);
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)tryPlay();});
+      tryPlay();
+    }
   }
 
   function setupStorySwitcher(){
@@ -72,10 +98,6 @@
 
     function restartProgress(tab){
       tab.classList.add('is-active');
-      if(reduceMotion)return;
-      tab.classList.remove('is-active');
-      void tab.offsetWidth;
-      tab.classList.add('is-active');
     }
 
     function schedule(){
@@ -89,7 +111,6 @@
 
       if(nextIndex===activeIndex){
         entries[nextIndex].tab.classList.add('is-active');
-        if(manual)restartProgress(entries[nextIndex].tab);
         schedule();
         return;
       }
