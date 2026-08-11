@@ -5,7 +5,7 @@
   if(!document.querySelector('script[data-obra-floorplan-runtime]')){
     const runtime=document.createElement('script');
     const source=document.currentScript?.src || new URL('assets/js/obra-page.js',location.origin+'/').href;
-    runtime.src=new URL('./obra-floorplan-public.js?v=20260810-1740',source).href;
+    runtime.src=new URL('./obra-floorplan-public.js?v=20260810-2128',source).href;
     runtime.defer=true;
     runtime.dataset.obraFloorplanRuntime='1';
     document.head.appendChild(runtime);
