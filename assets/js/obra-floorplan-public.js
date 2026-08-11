@@ -161,12 +161,7 @@
     }
 
     function renderThumbs(){
-      if(locked){
-        const hotspot=currentHotspot();
-        thumbs.innerHTML=hotspot.images.map((item,index)=>`<button type="button" class="obra-floorplan__thumb ${index===activeImage?'is-active':''}" data-floorplan-thumb-hotspot="${activeHotspot}" data-floorplan-thumb-image="${index}" aria-label="Mostrar imagem ${index+1} de ${esc(hotspot.label)}"><img src="${esc(item.url)}" alt="" loading="lazy" decoding="async"><span>${String(index+1).padStart(2,'0')}</span></button>`).join('');
-      }else{
-        thumbs.innerHTML=slides.map((slide,index)=>`<button type="button" class="obra-floorplan__thumb ${slide.hotspotIndex===activeHotspot&&slide.imageIndex===activeImage?'is-active':''}" data-floorplan-thumb-hotspot="${slide.hotspotIndex}" data-floorplan-thumb-image="${slide.imageIndex}" aria-label="Mostrar ${esc(slide.label)}, imagem ${slide.imageIndex+1}"><img src="${esc(slide.image.url)}" alt="" loading="lazy" decoding="async"><span>${String(index+1).padStart(2,'0')}</span></button>`).join('');
-      }
+      thumbs.innerHTML=slides.map((slide,index)=>`<button type="button" class="obra-floorplan__thumb ${slide.hotspotIndex===activeHotspot&&slide.imageIndex===activeImage?'is-active':''}" data-floorplan-thumb-hotspot="${slide.hotspotIndex}" data-floorplan-thumb-image="${slide.imageIndex}" aria-label="Mostrar ${esc(slide.label)}, imagem ${slide.imageIndex+1}"><img src="${esc(slide.image.url)}" alt="" loading="lazy" decoding="async"><span>${String(index+1).padStart(2,'0')}</span></button>`).join('');
 
       thumbs.querySelectorAll('[data-floorplan-thumb-hotspot]').forEach(button=>button.addEventListener('click',event=>{
         event.stopPropagation();
@@ -199,10 +194,8 @@
       }
 
       label.textContent=hotspot.label;
-      const globalIndex=currentSlideIndex();
-      count.textContent=locked
-        ? `${String(activeImage+1).padStart(2,'0')} / ${String(hotspot.images.length).padStart(2,'0')}`
-        : `${String(globalIndex+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`;
+      const globalIndex=Math.max(0,currentSlideIndex());
+      count.textContent=`${String(globalIndex+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`;
       setHotspotState();
       renderThumbs();
       restartProgress();
@@ -230,9 +223,7 @@
     }
 
     function modalSequence(){
-      if(!locked)return slides;
-      const hotspot=currentHotspot();
-      return hotspot.images.map((image,imageIndex)=>({hotspotIndex:activeHotspot,imageIndex,image,label:hotspot.label}));
+      return slides;
     }
 
     function modalSequenceIndex(){
