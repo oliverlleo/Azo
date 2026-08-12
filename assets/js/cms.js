@@ -3,6 +3,24 @@ import { normalizePageId, applyPageOverrides, normalizeAssetPath } from './cms-c
 
 const assetMap = new Map();
 const pageId = normalizePageId(location.pathname);
+let gateTimedOut = false;
+let readySignaled = false;
+
+const paintGate = document.createElement('style');
+paintGate.id = 'azo-cms-paint-gate';
+paintGate.textContent = `
+  html[data-cms-pending="true"] .site-header,
+  html[data-cms-pending="true"] .mobile-nav,
+  html[data-cms-pending="true"] main,
+  html[data-cms-pending="true"] .footer { visibility:hidden!important; }
+`;
+document.head.appendChild(paintGate);
+document.documentElement.dataset.cmsPending = 'true';
+
+const gateTimer = setTimeout(() => {
+  gateTimedOut = true;
+  signalReady(false);
+}, 3000);
 
 function canonicalAsset(value) {
   const path = normalizeAssetPath(value, location.href);
@@ -61,6 +79,7 @@ function watchImages() {
 
 async function loadAssets() {
   const snap = await getDocs(collection(db, 'assets'));
+  if (gateTimedOut) return;
   snap.forEach(item => {
     const data = item.data();
     if (data?.path && data?.url) assetMap.set(data.path, data);
@@ -70,7 +89,7 @@ async function loadAssets() {
 
 async function loadPage() {
   const snap = await getDoc(doc(db, 'sitePages', pageId));
-  if (!snap.exists()) return;
+  if (gateTimedOut || !snap.exists()) return;
   const data = snap.data();
   applyPageOverrides(document, Array.isArray(data.items) ? data.items : []);
 }
@@ -143,10 +162,11 @@ function moveProject(delta) {
 }
 
 async function loadProjects() {
-  if (pageId !== 'projetos') return;
+  if (pageId !== 'projetos' || gateTimedOut) return;
   const grid = document.querySelector('.projects-grid');
   if (!grid) return;
   const snap = await getDocs(collection(db, 'projects'));
+  if (gateTimedOut) return;
   const projects = snap.docs.map(item => ({ id: item.id, ...item.data() }))
     .filter(project => project.published !== false)
     .sort((a,b) => (Number(a.order) || 9999) - (Number(b.order) || 9999));
@@ -178,7 +198,12 @@ addEventListener('keydown', event => {
 });
 
 function signalReady(ok) {
+  if (readySignaled) return;
+  readySignaled = true;
+  clearTimeout(gateTimer);
   document.documentElement.dataset.cmsReady = ok ? 'true' : 'failed';
+  delete document.documentElement.dataset.cmsPending;
+  paintGate.remove();
   window.dispatchEvent(new CustomEvent('azo:cms-ready', { detail: { ok } }));
 }
 
@@ -188,7 +213,9 @@ window.AZO_CMS = { assetMap, resolveAsset, canonicalAsset };
   try {
     watchImages();
     await Promise.all([loadAssets(), loadPage()]);
+    if (gateTimedOut) return;
     await loadProjects();
+    if (gateTimedOut) return;
     signalReady(true);
   } catch (error) {
     console.warn('[AZO CMS] Conteúdo dinâmico indisponível; site estático mantido.', error);
