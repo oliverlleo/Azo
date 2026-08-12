@@ -25,12 +25,12 @@ heroMotionStyle.textContent=`
 .hero-slide.active{opacity:1!important;clip-path:none!important;transform:none!important;z-index:1}
 .hero-slide.entering{opacity:1!important;z-index:2!important}
 .hero-slide.leaving{opacity:0!important;clip-path:none!important}
-.hero-slide img{transform:scale(1.025);transition:none!important;backface-visibility:hidden;will-change:transform}
+.hero-slide img{transform:scale(1.04);transition:none!important;backface-visibility:hidden;will-change:transform}
 .hero-slide.active img{animation:azoHeroZoom 8s ease-out forwards!important}
 .hero h1 .line{overflow:visible!important;min-height:.86em}
 .hero h1 .word{transform:none!important;opacity:1!important;animation:none!important}
 .hero h1 .typing-target::after{content:'|';display:inline-block;margin-left:.035em;font-family:Arial,Helvetica,sans-serif;font-weight:200;font-size:.78em;line-height:1;animation:typeCursor .72s steps(1,end) infinite!important;vertical-align:.06em}
-@keyframes azoHeroZoom{from{transform:scale(1.025)}to{transform:scale(1)}}
+@keyframes azoHeroZoom{from{transform:scale(1.04)}to{transform:scale(1)}}
 @keyframes typeCursor{50%{opacity:0}}
 `;
 document.head.appendChild(heroMotionStyle);
