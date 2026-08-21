@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#0d2f35">
   <meta name="robots" content="noindex,follow">
   <title>Obras | AZO</title>
-  <link rel="stylesheet" href="../assets/css/site.css">
-  <link rel="stylesheet" href="../assets/css/obra-page.css?v=20260810-2245">
+  <link rel="stylesheet" href="../assets/css/site.css?v=20260821-1265-a11y">
+  <link rel="stylesheet" href="../assets/css/obra-page.css?v=20260821-1265-a11y">
 </head>
 <body class="obra-page">
   <main id="obra-public-root" style="min-height:100vh;background:#0d2f35;color:#fff;display:grid;place-items:center;text-align:center;padding:32px">
@@ -22,7 +22,7 @@
         const old=document.querySelector('script[data-obra-floorplan-runtime]');
         if(old)old.remove();
         const script=document.createElement('script');
-        script.src='../assets/js/obra-floorplan-public.js?v=20260810-2238';
+        script.src='../assets/js/obra-floorplan-public.js?v=20260821-1265-a11y';
         script.dataset.obraFloorplanRuntime='1';
         document.body.appendChild(script);
         return true;
@@ -32,6 +32,6 @@
       addEventListener('DOMContentLoaded',loadFloorplan,{once:true});
     })();
   </script>
-  <script type="module" src="../assets/js/obras-page.js?v=20260810-2238"></script>
+  <script type="module" src="../assets/js/obras-page.js?v=20260821-1265-a11y"></script>
 </body>
 </html>

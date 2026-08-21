@@ -17,7 +17,7 @@
     if(!document.querySelector('link[data-obra-floorplan-public]')){
       const link=document.createElement('link');
       link.rel='stylesheet';
-      link.href=new URL('../css/obra-floorplan.css?v=20260810-2218',SCRIPT_URL).href;
+      link.href=new URL('../css/obra-floorplan.css?v=20260821-1265-a11y',SCRIPT_URL).href;
       link.dataset.obraFloorplanPublic='1';
       document.head.appendChild(link);
     }
@@ -98,11 +98,11 @@
         </div>
       </div>
     </div>
-    <div class="obra-floorplan__modal" data-floorplan-modal aria-hidden="true" role="dialog" aria-modal="true" aria-label="Galeria ampliada da planta">
+    <div class="obra-floorplan__modal" data-floorplan-modal aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="floorplan-modal-title" hidden>
       <div class="obra-floorplan__modal-backdrop" data-floorplan-close></div>
       <div class="obra-floorplan__modal-shell">
         <div class="obra-floorplan__modal-top">
-          <div><span data-floorplan-modal-eyebrow>Tour da planta</span><strong data-floorplan-modal-title></strong></div>
+          <div><span data-floorplan-modal-eyebrow>Tour da planta</span><strong id="floorplan-modal-title" data-floorplan-modal-title></strong></div>
           <button type="button" class="obra-floorplan__modal-close" data-floorplan-close aria-label="Fechar imagem ampliada">×</button>
         </div>
         <div class="obra-floorplan__modal-stage">
@@ -122,6 +122,8 @@
     let modalOpen=false;
     let timer=null;
     let lastFocused=null;
+    const focusableSelector='a[href],area[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const dialogFocusables=dialog=>[...dialog.querySelectorAll(focusableSelector)].filter(el=>el.offsetParent!==null);
 
     const stage=section.querySelector('[data-floorplan-stage]');
     const progress=section.querySelector('[data-floorplan-progress]');
@@ -250,6 +252,7 @@
       clearTimeout(timer);
       restartProgress();
       renderModal();
+      modal.hidden=false;
       modal.classList.add('is-open');
       modal.setAttribute('aria-hidden','false');
       document.body.classList.add('no-scroll');
@@ -259,10 +262,13 @@
     function closeModal(){
       if(!modalOpen)return;
       modalOpen=false;
+      const returnTarget=lastFocused;
+      lastFocused=null;
       modal.classList.remove('is-open');
       modal.setAttribute('aria-hidden','true');
+      modal.hidden=true;
       document.body.classList.remove('no-scroll');
-      if(lastFocused instanceof HTMLElement)lastFocused.focus({preventScroll:true});
+      if(returnTarget&&typeof returnTarget.focus==='function')setTimeout(()=>{if(!modalOpen&&returnTarget.isConnected)returnTarget.focus({preventScroll:true})},0);
       restartProgress();
       schedule();
     }
@@ -291,31 +297,21 @@
       else{restartProgress();schedule();}
     });
 
-    addEventListener('keydown',event=>{
-      if(!modalOpen)return;
-      if(event.key==='Escape')closeModal();
-      if(event.key==='ArrowLeft'){event.preventDefault();modalMove(-1);}
-      if(event.key==='ArrowRight'){event.preventDefault();modalMove(1);}
+    modal.addEventListener('keydown',event=>{
+      if(event.key==='Escape'){event.preventDefault();closeModal();return;}
+      if(event.key==='ArrowLeft'){event.preventDefault();modalMove(-1);return;}
+      if(event.key==='ArrowRight'){event.preventDefault();modalMove(1);return;}
+      if(event.key!=='Tab')return;
+      const focusables=dialogFocusables(modal);
+      if(!focusables.length)return;
+      const first=focusables[0],last=focusables[focusables.length-1];
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
     });
 
     renderImage();
     schedule();
     return section;
-  }
-
-  function ensureStoryAutoplayFallback(){
-    if(!reduceMotion)return;
-    const story=document.querySelector('.obra-story');
-    if(!story||story.dataset.storyReducedAutoplay==='1')return;
-    const tabs=[...story.querySelectorAll('[data-story-target]')];
-    if(tabs.length<2)return;
-    story.dataset.storyReducedAutoplay='1';
-    let index=Math.max(0,tabs.findIndex(tab=>tab.getAttribute('aria-selected')==='true'));
-    setInterval(()=>{
-      if(document.hidden)return;
-      index=(index+1)%tabs.length;
-      tabs[index].click();
-    },6800);
   }
 
   async function start(){
@@ -337,7 +333,6 @@
         else document.querySelector('main')?.appendChild(section);
       }
       requestAnimationFrame(()=>section.classList.add('visible'));
-      ensureStoryAutoplayFallback();
     }catch(error){console.warn('[AZO Planta] Conteúdo interativo indisponível.',error);}
   }
 
