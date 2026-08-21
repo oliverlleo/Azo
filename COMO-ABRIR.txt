@@ -1,0 +1,7 @@
+AZO — SITE V4
+
+1. Extraia a pasta do ZIP.
+2. Dê dois cliques em index.html.
+3. Navegue normalmente pelo menu.
+
+Esta versão usa caminhos relativos para CSS, JavaScript, imagens e páginas internas.

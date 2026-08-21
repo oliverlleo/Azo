@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "include": [
+    "/obras",
+    "/obras/*",
+    "/sitemap.xml"
+  ],
+  "exclude": []
+}
