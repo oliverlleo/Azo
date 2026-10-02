@@ -150,12 +150,17 @@ class DirectAPI:
             WHERE c.table_schema='public' AND r.relkind='r' AND a.attnum>0 AND NOT a.attisdropped
             ORDER BY c.table_name,c.ordinal_position"""
         )
-        keys = self.query("""SELECT tc.table_name,kcu.column_name,kcu.ordinal_position
-            FROM information_schema.table_constraints tc
-            JOIN information_schema.key_column_usage kcu ON kcu.constraint_name=tc.constraint_name
-              AND kcu.constraint_schema=tc.constraint_schema AND kcu.table_name=tc.table_name
-            WHERE tc.table_schema='public' AND tc.constraint_type='PRIMARY KEY'
-            ORDER BY tc.table_name,kcu.ordinal_position""")
+        # information_schema hides constraints from the Management API read-only role.
+        # The catalog exposes the actual primary key without requiring write access.
+        keys = self.query("""SELECT r.relname AS table_name, a.attname AS column_name,
+            key.ordinality AS ordinal_position
+            FROM pg_catalog.pg_constraint c
+            JOIN pg_catalog.pg_class r ON r.oid=c.conrelid
+            JOIN pg_catalog.pg_namespace n ON n.oid=r.relnamespace
+            CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS key(attnum,ordinality)
+            JOIN pg_catalog.pg_attribute a ON a.attrelid=r.oid AND a.attnum=key.attnum
+            WHERE n.nspname='public' AND c.contype='p'
+            ORDER BY r.relname,key.ordinality""")
         tables = {}
         for column in columns:
             table = tables.setdefault(column['table_name'], {'columns': {}, 'pk': [], 'rows': []})
@@ -368,7 +373,7 @@ def apply(api, directory):
     # Persist rollback intent BEFORE any remote mutation (also survives lost responses).
     plan['state'] = 'applying'
     save_json(directory / 'plan.json', plan)
-    for entry in plan['files']:
+    for index, entry in enumerate(plan['files'], 1):
         if digest(api.download(entry['original'])) != entry['original_sha256']:
             raise RuntimeError('Original file changed since backup. No reference swap attempted.')
         data = (directory / entry['local']).read_bytes()
@@ -386,6 +391,7 @@ def apply(api, directory):
             raise RuntimeError('Target path conflict. No files overwritten.')
         if digest(api.download(entry['target'], public=True)) != entry['sha256']:
             raise RuntimeError('Public WebP verification failed. No reference swap attempted.')
+        print(f'Uploaded and publicly verified {index}/{len(plan["files"])}', flush=True)
     api.query(guarded_sql(plan['changes']), write=True)
     verify_rows(api, plan)
     plan['state'] = 'applied'
@@ -446,3 +452,4 @@ if __name__ == '__main__':
     except (RuntimeError, OSError, ValueError) as error:
         print(f'Aborted: {error}', file=sys.stderr)
         sys.exit(1)
+
