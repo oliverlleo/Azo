@@ -188,7 +188,7 @@ function upload(file, storagePath, progress) {
       cacheControl: 'public,max-age=31536000,immutable'
     });
     task.on('state_changed', snap => progress?.(snap.bytesTransferred / snap.totalBytes), reject, async () => {
-      resolve({ url: await getDownloadURL(task.snapshot.ref), storagePath: task.snapshot.ref.fullPath });
+      resolve({ url: await getDownloadURL(task.snapshot.ref), storagePath: task.snapshot.ref.fullPath, fileName: task.snapshot.fileName, contentType: task.snapshot.contentType, size: task.snapshot.size });
     });
   });
 }
@@ -242,9 +242,9 @@ async function persistImage(event) {
       path,
       url: uploaded.url,
       storagePath: uploaded.storagePath,
-      fileName: file.name,
-      contentType: file.type,
-      size: file.size,
+      fileName: uploaded.fileName,
+      contentType: uploaded.contentType,
+      size: uploaded.size,
       updatedAt: serverTimestamp(),
       updatedBy: user.uid
     });

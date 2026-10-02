@@ -1,3 +1,4 @@
+import { uploadMedia } from '../assets/js/image-upload.js';
 import { supabase, onAuthStateChanged, auth } from '../assets/js/supabase-config.js';
 
 const SITE_BASE = new URL('../', import.meta.url);
@@ -535,14 +536,7 @@ async function upload(file, kind) {
   setSaveState(`Enviando ${kind}...`);
   const extension = (file.name.split('.').pop() || 'bin').toLowerCase();
   const path = `obras/${current.id}/${kind}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-    upsert: false,
-    contentType: file.type,
-    cacheControl: '31536000'
-  });
-  if (error) throw error;
-  const url = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
-  return { url, path };
+  return uploadMedia(supabase, BUCKET, path, file, {upsert:false, cacheControl:'31536000'});
 }
 
 async function uploadHeroImage(file) {

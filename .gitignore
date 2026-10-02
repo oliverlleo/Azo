@@ -1,0 +1,6 @@
+# Server backups contain private data and must never be committed.
+media-backup*/
+.backups/
+__pycache__/
+.env
+.env.*

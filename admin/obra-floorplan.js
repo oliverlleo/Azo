@@ -1,3 +1,4 @@
+import { uploadMedia } from '../assets/js/image-upload.js';
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 const clone=value=>JSON.parse(JSON.stringify(value));
 const esc=(value='')=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -52,9 +53,7 @@ export function createFloorPlanEditor({root,value,obraId,supabase,bucket,onChang
   async function upload(file,kind){
     if(!file)return null;
     const path=`obras/${obraId}/floorplan/${kind}/${Date.now()}-${crypto.randomUUID()}.${ext(file.name)}`;
-    const {error}=await supabase.storage.from(bucket).upload(path,file,{upsert:false,contentType:file.type,cacheControl:'31536000'});
-    if(error)throw error;
-    return {url:supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl,path};
+    return uploadMedia(supabase,bucket,path,file,{upsert:false,cacheControl:'31536000'});
   }
 
   async function setPlanImage(file){

@@ -402,7 +402,7 @@ function uploadFile(file, storagePath, progressCallback) {
       progressCallback?.(snapshot.bytesTransferred / snapshot.totalBytes);
     }, reject, async () => {
       const url = await getDownloadURL(task.snapshot.ref);
-      resolve({ url, storagePath: task.snapshot.ref.fullPath });
+      resolve({ url, storagePath: task.snapshot.ref.fullPath, fileName: task.snapshot.fileName, contentType: task.snapshot.contentType, size: task.snapshot.size });
     });
   });
 }
@@ -424,9 +424,9 @@ $('#asset-file-input').addEventListener('change', async event => {
       path,
       url: uploaded.url,
       storagePath: uploaded.storagePath,
-      fileName: file.name,
-      contentType: file.type,
-      size: file.size,
+      fileName: uploaded.fileName,
+      contentType: uploaded.contentType,
+      size: uploaded.size,
       updatedAt: serverTimestamp(),
       updatedBy: state.user.uid
     });
