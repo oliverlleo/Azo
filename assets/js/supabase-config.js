@@ -1,3 +1,4 @@
+import { uploadMedia } from './image-upload.js';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabaseUrl = 'https://jjrsbbgnqfiezhokxbqz.supabase.co';
@@ -159,9 +160,9 @@ function uploadBytesResumable(fileRef,file,metadata={}){
       queueMicrotask(async()=>{
         try{
           progress?.({bytesTransferred:0,totalBytes:file.size});
-          const {error:uploadError}=await supabase.storage.from(BUCKET).upload(fileRef.fullPath,file,{upsert:true,contentType:metadata.contentType||file.type,cacheControl:'31536000'});
-          if(uploadError) throw uploadError;
-          task.snapshot={ref:fileRef,bytesTransferred:file.size,totalBytes:file.size};
+          const uploaded=await uploadMedia(supabase,BUCKET,fileRef.fullPath,file,{upsert:true,contentType:metadata.contentType||file.type,cacheControl:'31536000'});
+          task.snapshot={ref:{fullPath:uploaded.path},bytesTransferred:uploaded.size,totalBytes:uploaded.size,
+            fileName:uploaded.fileName,contentType:uploaded.contentType,size:uploaded.size};
           progress?.(task.snapshot); complete?.();
         }catch(uploadError){error?.(uploadError);}
       });
