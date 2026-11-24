@@ -13,9 +13,12 @@ if (typeof document !== 'undefined') {
 const SKIP_TEXT_TAGS = new Set(['SCRIPT','STYLE','NOSCRIPT','SVG','CANVAS','TEMPLATE']);
 
 function normalizePageId(pathname = location.pathname) {
-  let file = pathname.split('/').filter(Boolean).pop() || 'index.html';
-  if (!file.includes('.')) file = 'index.html';
-  return file.replace(/\.html?$/i, '') || 'index';
+  const segments=pathname.split('/').filter(Boolean);
+  let file=segments.pop()||'index';
+  if(/^index\.html?$/i.test(file)&&segments.length)file=segments.pop();
+  file=file.replace(/\.html?$/i,'');
+  // The hosting platform also serves extensionless and directory URLs.
+  return ['index','servicos','projetos','sobre','contato','projeto-arquitetonico','interiores','gestao-de-obras'].includes(file)?file:'index';
 }
 
 function elementPath(el, root = el?.ownerDocument?.body) {
