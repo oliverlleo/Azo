@@ -1,4 +1,6 @@
 import { db, collection, getDocs } from './firebase-config.js';
+import { visibleProjectPhotos } from './project-photo-visibility.mjs';
+import { readProjectPhotoVisibility } from './project-photo-store.js';
 
 const ORDER = ['AS','HL','JT','MN','SE','EF'];
 const DEFAULTS = {
@@ -10,6 +12,20 @@ const DEFAULTS = {
   EF:{title:'Casa EF',category:'Interiores + área de lazer'}
 };
 const overrides = new Map();
+let hiddenPhotos = new Set();
+let addedPhotos = new Map();
+
+function photos(key){ return visibleProjectPhotos(key,hiddenPhotos,addedPhotos); }
+function photoURL(path){return addedPhotos.get(path)?.url || new URL('../images/projects/'+path.split('/').pop(),import.meta.url).href;}
+function cover(img,key,thumbnail=false){
+  const first=photos(key)[0];
+  if(!img || !first) return;
+  const path=thumbnail&&!addedPhotos.has(first)?first.replace('.webp','-sm.webp'):first;
+  const url=photoURL(path);
+  img.removeAttribute('srcset');
+  img.dataset.cmsSource=path;
+  img.src=window.AZO_CMS?.resolveAsset(url)||url;
+}
 
 function current(key){
   const saved = overrides.get(key) || {};
@@ -17,19 +33,20 @@ function current(key){
 }
 
 function applyProjectsPage(){
-  if (!document.querySelector('.projects-grid')) return;
   for(const key of ORDER){
     const project=current(key);
-    const card=document.querySelector(`.portfolio-card[data-gallery="${key}"]`);
-    if(!card) continue;
-    card.hidden=!project.published;
-    card.style.display=project.published?'':'none';
-    const title=card.querySelector('h3');
-    const meta=card.querySelector('.portfolio-card__text div span');
-    const img=card.querySelector('img');
-    if(title) title.textContent=project.title;
-    if(meta) meta.textContent=`${project.category || 'Projeto'} · abrir galeria`;
-    if(img) img.alt=project.title;
+    for(const card of document.querySelectorAll(`.portfolio-card[data-gallery="${key}"],.case-card[data-gallery="${key}"],.project-card[data-project="${key.toLowerCase()}"]`)){
+      const visible=project.published && photos(key).length>0;
+      card.hidden=!visible;
+      card.style.display=visible?'':'none';
+      if(!visible) continue;
+      const title=card.querySelector('h3');
+      const meta=card.querySelector('.portfolio-card__text div span');
+      const img=card.querySelector('img');
+      if(title) title.textContent=project.title;
+      if(meta) meta.textContent=`${project.category || 'Projeto'} · abrir galeria`;
+      if(img){img.alt=project.title;cover(img,key);}
+    }
   }
 }
 
@@ -60,7 +77,7 @@ function rebuildHomeProjects(){
   const oldOpen=oldSection.querySelector('.project-open');
   const oldShots=[...oldSection.querySelectorAll('.project-shot')];
   const oldThumbs=[...oldSection.querySelectorAll('.project-thumb')];
-  const visible=ORDER.filter(key=>current(key).published);
+  const visible=ORDER.filter(key=>current(key).published && photos(key).length>0);
   if(!visible.length){oldSection.style.display='none';return;}
 
   const fresh=oldSection.cloneNode(true);
@@ -75,8 +92,8 @@ function rebuildHomeProjects(){
     const originalIndex=ORDER.indexOf(key);
     const shot=oldShots[originalIndex]?.cloneNode(true);
     const thumb=oldThumbs[originalIndex]?.cloneNode(true);
-    if(shot){shot.classList.remove('active');stage.insertBefore(shot,info);}
-    if(thumb){thumb.classList.remove('active');strip.appendChild(thumb);}
+    if(shot){cover(shot.querySelector('img'),key);shot.classList.remove('active');stage.insertBefore(shot,info);}
+    if(thumb){cover(thumb.querySelector('img'),key,true);thumb.classList.remove('active');strip.appendChild(thumb);}
   });
 
   oldSection.replaceWith(fresh);
@@ -120,19 +137,30 @@ function rebuildHomeProjects(){
 }
 
 async function load(){
+  if(window.__azoProjectVisibilityStarted)return;
+  window.__azoProjectVisibilityStarted=true;
   try{
-    const snap=await getDocs(collection(db,'projectSettings'));
+    const [snap,visibility]=await Promise.all([getDocs(collection(db,'projectSettings')),readProjectPhotoVisibility()]);
+    hiddenPhotos=visibility.hidden;
+    addedPhotos=visibility.additions;
     snap.forEach(item=>{
       const data=item.data();
       if(data?.builtinKey && ORDER.includes(String(data.builtinKey).toUpperCase())){
         overrides.set(String(data.builtinKey).toUpperCase(),data);
       }
     });
+    // Apply after text/image CMS overrides to prevent an old cover winning a race.
+    if(!document.documentElement.dataset.cmsReady){
+      await new Promise(resolve=>window.addEventListener('azo:cms-ready',resolve,{once:true}));
+    }
     applyProjectsPage();
     rebuildHomeProjects();
     installLightboxTitleSync();
+    window.AZO_PROJECT_PHOTOS={photos:key=>current(key).published?photos(key):[],url:photoURL};
+    document.documentElement.dataset.azoProjectPhotosReady='true';
   }catch(error){
-    console.warn('[AZO] Não foi possível aplicar alterações dos projetos existentes.',error);
+    document.documentElement.dataset.azoProjectPhotosReady='failed';
+    console.warn('[AZO] Projetos originais ocultos até confirmar a visibilidade das fotos.',error);
   }
 }
 

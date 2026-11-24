@@ -181,7 +181,7 @@ export {supabase,supabaseConfig,auth,db,storage,collection,doc,getDoc,getDocs,se
 const OBRAS_ASSET_VERSION='20260810-2238';
 const isAdminRuntime=/\/admin\/?(?:index\.html)?$/i.test(location.pathname)||location.pathname.includes('/admin/');
 if(isAdminRuntime){
-  import('../../admin/existing-projects.js').catch(error=>console.warn('[AZO Admin] Projetos existentes indisponíveis.',error));
+  import('../../admin/existing-projects.js?v=20261124-photos').catch(error=>console.warn('[AZO Admin] Projetos existentes indisponíveis.',error));
   if(!document.querySelector('link[data-azo-obras-style]')){
     const style=document.createElement('link');
     style.rel='stylesheet';
@@ -192,6 +192,5 @@ if(isAdminRuntime){
   import(`../../admin/obras.js?v=${OBRAS_ASSET_VERSION}`).catch(error=>console.warn('[AZO Studio] Módulo Obras indisponível.',error));
   import(`../../admin/obra-floorplan-bootstrap.js?v=${OBRAS_ASSET_VERSION}`).catch(error=>console.warn('[AZO Studio] Planta interativa indisponível.',error));
 }else{
-  import('./project-overrides.js').catch(error=>console.warn('[AZO] Alterações de projetos existentes indisponíveis.',error));
   import(`./obras-public.js?v=${OBRAS_ASSET_VERSION}`).catch(error=>console.warn('[AZO] Navegação de obras indisponível.',error));
 }

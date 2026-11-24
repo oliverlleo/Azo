@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="theme-color" content="#0d2f35">
   <title>AZO Studio — Administração</title>
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css?v=20261124-photos">
   <style>[hidden]{display:none!important}</style>
   <script type="importmap">
   {
@@ -14,7 +14,7 @@
       "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js": "./supabase-auth-shim.js",
       "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js": "./supabase-firestore-shim.js",
       "https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js": "./supabase-storage-shim.js",
-      "../assets/js/firebase-config.js": "../assets/js/firebase-config.js?v=20260810-2238"
+      "../assets/js/firebase-config.js": "../assets/js/firebase-config.js?v=20261124-photos"
     }
   }
   </script>
@@ -91,7 +91,7 @@
       <div class="view" id="view-images">
         <div class="toolbar panel slim">
           <div class="search-box"><span>⌕</span><input id="image-search" type="search" placeholder="Buscar arquivo, projeto ou imagem..."></div>
-          <div class="filter-pills"><button class="active" data-image-filter="all">Todas</button><button data-image-filter="main">Site</button><button data-image-filter="projects">Projetos</button><button data-image-filter="replaced">Alteradas</button></div>
+          <button class="btn btn-primary" id="add-project-photos" type="button">+ Adicionar fotos</button><div class="filter-pills"><button class="active" data-image-filter="all">Todas</button><button data-image-filter="main">Site</button><button data-image-filter="projects">Projetos</button><button data-image-filter="replaced">Alteradas</button><button data-image-filter="hidden">Excluídas</button></div>
         </div>
         <div class="notice"><b>Biblioteca completa.</b> Esta tela inclui também as imagens das galerias que não ficam visíveis no HTML até a galeria ser aberta.</div>
         <div class="asset-grid" id="asset-grid"></div>
@@ -130,8 +130,8 @@
 
   <input type="file" id="asset-file-input" accept="image/*" hidden>
   <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
-  <script type="module" src="friendly-ui.js"></script>
-  <script type="module" src="admin.js?v=20260810-2238"></script>
+  <script type="module" src="friendly-ui.js?v=20261124-photos"></script>
+  <script type="module" src="admin.js?v=20261124-photos"></script>
   <script type="module" src="existing-projects.js?v=20260810-0835"></script>
   <script type="module" src="visual-editor.js?v=20260812-1321"></script>
 </body>

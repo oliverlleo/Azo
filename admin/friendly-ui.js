@@ -42,6 +42,8 @@ function pageName() {
 
 function imageInfo(path = '') {
   if (IMAGE_LABELS[path]) return IMAGE_LABELS[path];
+  const extra=path.match(/assets\/images\/projects\/([a-z]+)-extra-/i);
+  if(extra)return [`Casa ${extra[1].toUpperCase()} — foto adicionada`,'Nova foto da galeria'];
   const project = path.match(/assets\/images\/projects\/([a-z]+)-(\d+)(-sm)?\.webp$/i);
   if (project) {
     const code = project[1].toUpperCase();
@@ -145,7 +147,7 @@ function simplifyStaticInterface() {
   const search = $('#image-search');
   if (search && search.placeholder !== 'Buscar imagem, serviço ou projeto...') search.placeholder = 'Buscar imagem, serviço ou projeto...';
 
-  setHtml($('#view-images .notice'), '<b>Todas as imagens do site.</b> Escolha visualmente a foto que deseja alterar e clique em “Trocar imagem”. As versões para computador e celular aparecem identificadas separadamente.');
+  setHtml($('#view-images .notice'), '<b>Todas as imagens do site.</b> Troque as imagens ou use “Excluir imagem” nas fotos dos projetos. A exclusão vale para computador e celular; as fotos excluídas podem ser mostradas novamente.');
   setHtml($('#view-content .notice'), '<b>Escolha a página e altere os textos.</b> Cada campo informa em linguagem simples onde aquele texto aparece no site. Depois clique em “Salvar alterações”.');
   setText($('#view-dashboard .hero-panel p:last-child'), 'Altere textos, títulos, imagens e projetos sem mexer em código. O que for salvo aqui passa a ser usado pelo site.');
   setText($('.login-copy > p:last-child'), 'Entre com seu e-mail e senha para alterar textos, imagens e projetos do site.');
