@@ -137,6 +137,8 @@ function rebuildHomeProjects(){
 }
 
 async function load(){
+  if(window.__azoProjectVisibilityStarted)return;
+  window.__azoProjectVisibilityStarted=true;
   try{
     const [snap,visibility]=await Promise.all([getDocs(collection(db,'projectSettings')),readProjectPhotoVisibility()]);
     hiddenPhotos=visibility.hidden;
