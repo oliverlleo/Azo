@@ -88,3 +88,7 @@ body.is-loading{overflow:hidden}.no-scroll{overflow:hidden!important}[hidden]{di
   .inner-hero{min-height:67svh;padding:120px 0 45px}.inner-hero h1{font-size:clamp(3.5rem,16vw,6rem)}.case-grid,.projects-grid{grid-template-columns:1fr}.portfolio-card:nth-child(3n){grid-column:auto;aspect-ratio:1.1}.case-card{min-height:430px}.contact-form,.contact-panel{padding:24px;border-radius:22px}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}.ambient{display:none}}
+
+/* Do not expose stale built-in project photos before the visibility lookup. */
+html:not([data-azo-project-photos-ready="true"]) section.projects,html:not([data-azo-project-photos-ready="true"]) .portfolio-card[data-gallery],html:not([data-azo-project-photos-ready="true"]) .case-card[data-gallery],html:not([data-azo-project-photos-ready="true"]) .project-card[data-project]{visibility:hidden!important;pointer-events:none!important}
+html[data-azo-project-photos-ready="failed"] section.projects,html[data-azo-project-photos-ready="failed"] .portfolio-card[data-gallery],html[data-azo-project-photos-ready="failed"] .case-card[data-gallery],html[data-azo-project-photos-ready="failed"] .project-card[data-project]{display:none!important}

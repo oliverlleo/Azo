@@ -192,6 +192,6 @@ if(isAdminRuntime){
   import(`../../admin/obras.js?v=${OBRAS_ASSET_VERSION}`).catch(error=>console.warn('[AZO Studio] Módulo Obras indisponível.',error));
   import(`../../admin/obra-floorplan-bootstrap.js?v=${OBRAS_ASSET_VERSION}`).catch(error=>console.warn('[AZO Studio] Planta interativa indisponível.',error));
 }else{
-  import('./project-overrides.js').catch(error=>console.warn('[AZO] Alterações de projetos existentes indisponíveis.',error));
+  import('./project-overrides.js?v=20261124-photos').catch(error=>console.warn('[AZO] Alterações de projetos existentes indisponíveis.',error));
   import(`./obras-public.js?v=${OBRAS_ASSET_VERSION}`).catch(error=>console.warn('[AZO] Navegação de obras indisponível.',error));
 }

@@ -21,6 +21,8 @@ import {
   deleteObject
 } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js';
 import { scanDocument, assetDocId } from '../assets/js/cms-core.js';
+import { projectPhotoPath } from '../assets/js/project-photo-visibility.mjs';
+import { readProjectPhotoVisibility, setProjectPhotoHidden } from '../assets/js/project-photo-store.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -44,6 +46,7 @@ const state = {
   contentItems: [],
   assetManifest: [],
   assetOverrides: new Map(),
+  hiddenProjectPhotos: new Set(),
   imageFilter: 'all',
   imageSearch: '',
   pendingAssetPath: null,
@@ -320,7 +323,8 @@ async function ensureImageData() {
     state.assetManifest = data.assets || [];
     $('#stat-images').textContent = data.count || state.assetManifest.length;
   }
-  const snap = await getDocs(collection(db, 'assets'));
+  const [snap, hidden] = await Promise.all([getDocs(collection(db, 'assets')), readProjectPhotoVisibility()]);
+  state.hiddenProjectPhotos = hidden;
   state.assetOverrides = new Map();
   snap.forEach(item => {
     const data = item.data();
@@ -341,6 +345,7 @@ function renderAssets() {
   const search = state.imageSearch.toLowerCase();
   let paths = state.assetManifest.filter(path => {
     if (search && !path.toLowerCase().includes(search)) return false;
+    if (state.imageFilter === 'hidden') return state.hiddenProjectPhotos.has(projectPhotoPath(path));
     if (state.imageFilter === 'replaced') return state.assetOverrides.has(path);
     if (state.imageFilter === 'projects') return imageCategory(path) === 'projects';
     if (state.imageFilter === 'main') return imageCategory(path) === 'main';
@@ -353,10 +358,17 @@ function renderAssets() {
   root.innerHTML = paths.map(path => {
     const override = state.assetOverrides.get(path);
     const src = override?.url || `../${path}`;
-    return `<article class="asset-card ${override ? 'replaced' : ''}" data-asset="${escapeHtml(path)}">
+    const photo = projectPhotoPath(path);
+    const hidden = photo && state.hiddenProjectPhotos.has(photo);
+    return `<article class="asset-card ${override ? 'replaced' : ''} ${hidden ? 'asset-hidden' : ''}" data-asset="${escapeHtml(path)}">
       <div class="asset-preview"><img src="${escapeHtml(src)}" alt="${escapeHtml(imageLabel(path))}" loading="lazy"></div>
       <div class="asset-info"><strong title="${escapeHtml(imageLabel(path))}">${escapeHtml(imageLabel(path))}</strong><small title="${escapeHtml(path)}">${escapeHtml(path)}</small></div>
-      <div class="asset-actions"><button class="btn btn-ghost" data-replace-asset="${escapeHtml(path)}">Substituir</button>${override ? `<button class="btn btn-danger" data-restore-asset="${escapeHtml(path)}">Restaurar</button>` : ''}</div>
+      ${hidden ? '<div class="asset-visibility-status">Excluída do site</div>' : ''}
+      <div class="asset-actions">
+        <button class="btn btn-ghost" data-replace-asset="${escapeHtml(path)}">Substituir</button>
+        ${override ? `<button class="btn btn-ghost" data-restore-asset="${escapeHtml(path)}">Restaurar</button>` : ''}
+        ${photo ? hidden ? `<button class="btn btn-primary" data-show-photo="${escapeHtml(photo)}">Mostrar novamente</button>` : `<button class="btn btn-danger" data-delete-photo="${escapeHtml(photo)}">Excluir imagem</button>` : ''}
+      </div>
     </article>`;
   }).join('');
   $$('[data-replace-asset]', root).forEach(button => button.addEventListener('click', () => {
@@ -364,7 +376,71 @@ function renderAssets() {
     $('#asset-file-input').value = '';
     $('#asset-file-input').click();
   }));
-  $$('[data-restore-asset]', root).forEach(button => button.addEventListener('click', () => restoreAsset(button.dataset.restoreAsset)));
+  $('[data-restore-asset]', root).forEach(button => button.addEventListener('click', () => restoreAsset(button.dataset.restoreAsset)));
+  $('[data-delete-photo]', root).forEach(button => button.addEventListener('click', () => confirmPhotoDeletion(button.dataset.deletePhoto)));
+  $('[data-show-photo]', root).forEach(button => button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      await setProjectPhotoHidden(button.dataset.showPhoto, false, state.user);
+      state.hiddenProjectPhotos.delete(button.dataset.showPhoto);
+      renderAssets();
+      toast('Imagem voltou a aparecer no site.');
+    } catch (error) { toast(error.message || 'Não foi possível restaurar a visibilidade.', 'error'); }
+    finally { button.disabled = false; }
+  }));
+}
+
+function confirmPhotoDeletion(path) {
+  if (!state.user || !state.admin || !projectPhotoPath(path) || document.getElementById('photo-delete-dialog')) return;
+  const [code,number] = path.split('/').pop().replace('.webp','').split('-');
+  const dialog = document.createElement('dialog');
+  dialog.id = 'photo-delete-dialog';
+  dialog.className = 'photo-delete-dialog';
+  dialog.setAttribute('aria-labelledby','photo-delete-title');
+  dialog.setAttribute('aria-describedby','photo-delete-description');
+  dialog.innerHTML = `
+    <div class="photo-delete-heading"><span class="photo-delete-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg></span><button type="button" class="icon-button photo-delete-close" aria-label="Fechar">×</button></div>
+    <p class="eyebrow">Gerenciar galeria</p>
+    <h2 id="photo-delete-title">Excluir esta imagem?</h2>
+    <div class="photo-delete-preview"><img alt=""><div><strong></strong><small>Imagem do projeto</small></div></div>
+    <p id="photo-delete-description">A foto deixará de aparecer no site, inclusive na galeria e na versão para celular. As demais fotos do projeto serão mantidas. Você poderá mostrar esta imagem novamente pelo painel.</p>
+    <p class="photo-delete-error" role="alert" hidden></p>
+    <footer><button type="button" class="btn btn-ghost photo-delete-cancel" autofocus>Cancelar</button><button type="button" class="btn btn-danger photo-delete-confirm">Excluir imagem</button></footer>`;
+  const preview = state.assetOverrides.get(path)?.url || '../'+path;
+  dialog.querySelector('img').src = preview;
+  dialog.querySelector('strong').textContent = `Casa ${code.toUpperCase()} — foto ${number}`;
+  const cancel = dialog.querySelector('.photo-delete-cancel');
+  const close = dialog.querySelector('.photo-delete-close');
+  const confirm = dialog.querySelector('.photo-delete-confirm');
+  const errorMessage = dialog.querySelector('.photo-delete-error');
+  let saving = false;
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  dialog.addEventListener('cancel',event=>{if(saving)event.preventDefault();});
+  cancel.addEventListener('click',()=>dialog.close());
+  close.addEventListener('click',()=>dialog.close());
+  confirm.addEventListener('click',async()=>{
+    if (saving) return;
+    saving=true;
+    cancel.disabled=close.disabled=confirm.disabled=true;
+    confirm.textContent='Excluindo...';
+    errorMessage.hidden=true;
+    try {
+      await setProjectPhotoHidden(path,true,state.user);
+      state.hiddenProjectPhotos.add(path);
+      dialog.close();
+      renderAssets();
+      toast('Imagem excluída do site.');
+    } catch (error) {
+      errorMessage.textContent=error.message || 'Não foi possível excluir. Tente novamente.';
+      errorMessage.hidden=false;
+    } finally {
+      saving=false;
+      cancel.disabled=close.disabled=confirm.disabled=false;
+      confirm.textContent='Excluir imagem';
+    }
+  });
+  document.body.appendChild(dialog);
+  dialog.showModal();
 }
 
 async function loadImages() {
