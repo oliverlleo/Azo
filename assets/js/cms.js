@@ -219,6 +219,7 @@ function signalReady(ok) {
 }
 
 window.AZO_CMS = { assetMap, resolveAsset, canonicalAsset,
+  get imagePositionsReady(){return positionItems!==null},
   updateImagePositions(items){
     positionItems=items.filter(i=>i.type==='image-position');
     document.querySelectorAll('img').forEach(img=>applyImagePositionItems(img,positionItems));

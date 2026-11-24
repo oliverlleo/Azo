@@ -34,7 +34,7 @@ export function imagePositionKey(img){
 export function ensurePositionStyle(doc){
  if(doc.getElementById('azo-image-position-style'))return;
  const s=doc.createElement('style');s.id='azo-image-position-style';
- const rule=d=>'img[data-azo-position-'+d+']{object-position:var(--azo-position-'+d+')!important;animation:none!important;transform:none!important;transition-property:opacity,filter!important}';
+ const rule=d=>'html img[data-azo-position-key][data-azo-position-'+d+']{object-position:var(--azo-position-'+d+')!important;animation:none!important;transform:none!important;transition-property:opacity,filter!important}';
  s.textContent='@media(max-width:680px){'+rule('mobile')+'}@media(min-width:680.01px) and (max-width:1050px){'+rule('tablet')+'}@media(min-width:1050.01px){'+rule('desktop')+'}';
  doc.head.appendChild(s);
 }

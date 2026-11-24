@@ -43,7 +43,7 @@ function showScene(a){
  const d=a.img.ownerDocument;
  if(!d.getElementById('azo-position-editor-scene')){
   const s=d.createElement('style');s.id='azo-position-editor-scene';
-  s.textContent='img[data-position-editing]{animation:none!important;transform:none!important;transition:none!important} [data-position-group]>.hero-slide:not([data-position-scene]),[data-position-group]>.project-shot:not([data-position-scene]),[data-position-group]>.service-scene:not([data-position-scene]){opacity:0!important;visibility:hidden!important} [data-position-scene]{opacity:1!important;visibility:visible!important;clip-path:none!important;transform:none!important;transition:none!important;z-index:3!important}';
+  s.textContent='html img[data-azo-position-key][data-position-editing]{animation:none!important;transform:none!important;transition:none!important} [data-position-group]>.hero-slide:not([data-position-scene]),[data-position-group]>.project-shot:not([data-position-scene]),[data-position-group]>.service-scene:not([data-position-scene]){opacity:0!important;visibility:hidden!important} [data-position-scene]{opacity:1!important;visibility:visible!important;clip-path:none!important;transform:none!important;transition:none!important;z-index:3!important}';
   d.head.appendChild(s);
  }
  a.img.setAttribute('data-position-editing','');
@@ -87,6 +87,7 @@ function start(button,box,img){
  if(active||!img.isConnected)return;
  const frame=$('#ve3-frame'),key=imagePositionKey(img);
  if(!key||!frame?.contentWindow||frame.contentDocument!==img.ownerDocument)return;
+ if(!frame.contentWindow.AZO_CMS?.imagePositionsReady){notice('Aguarde o carregamento das configurações da página ou atualize a prévia.','error');return}
  const chosen=$('#ve3-stage')?.dataset.device||'desktop',device=deviceForWidth(frame.contentWindow.innerWidth);
  if(chosen!==device){notice('A prévia ainda não está no tamanho correto. Tente novamente.','error');return}
  const original=savedPosition(img,device);
