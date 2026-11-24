@@ -21,8 +21,8 @@ import {
   deleteObject
 } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js';
 import { scanDocument, assetDocId } from '../assets/js/cms-core.js';
-import { projectPhotoPath } from '../assets/js/project-photo-visibility.mjs';
-import { readProjectPhotoVisibility, setProjectPhotoHidden } from '../assets/js/project-photo-store.js';
+import { PROJECT_KEYS, projectPhotoPath, isAddedPhoto } from '../assets/js/project-photo-visibility.mjs';
+import { readProjectPhotoVisibility, setProjectPhotoHidden, addProjectPhoto, requirePhotoAdmin } from '../assets/js/project-photo-store.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -47,6 +47,7 @@ const state = {
   assetManifest: [],
   assetOverrides: new Map(),
   hiddenProjectPhotos: new Set(),
+  addedProjectPhotos: new Map(),
   imageFilter: 'all',
   imageSearch: '',
   pendingAssetPath: null,
@@ -323,8 +324,9 @@ async function ensureImageData() {
     state.assetManifest = data.assets || [];
     $('#stat-images').textContent = data.count || state.assetManifest.length;
   }
-  const [snap, hidden] = await Promise.all([getDocs(collection(db, 'assets')), readProjectPhotoVisibility()]);
-  state.hiddenProjectPhotos = hidden;
+  const [snap, visibility] = await Promise.all([getDocs(collection(db, 'assets')), readProjectPhotoVisibility()]);
+  state.hiddenProjectPhotos = visibility.hidden;
+  state.addedProjectPhotos = visibility.additions;
   state.assetOverrides = new Map();
   snap.forEach(item => {
     const data = item.data();
@@ -343,7 +345,7 @@ function imageLabel(path) {
 function renderAssets() {
   const root = $('#asset-grid');
   const search = state.imageSearch.toLowerCase();
-  let paths = state.assetManifest.filter(path => {
+  let paths = [...state.assetManifest,...state.addedProjectPhotos.keys()].filter(path => {
     if (search && !path.toLowerCase().includes(search)) return false;
     if (state.imageFilter === 'hidden') return state.hiddenProjectPhotos.has(projectPhotoPath(path));
     if (state.imageFilter === 'replaced') return state.assetOverrides.has(path);
@@ -357,7 +359,8 @@ function renderAssets() {
   }
   root.innerHTML = paths.map(path => {
     const override = state.assetOverrides.get(path);
-    const src = override?.url || `../${path}`;
+    const added = state.addedProjectPhotos.get(path);
+    const src = added?.url || override?.url || `../${path}`;
     const photo = projectPhotoPath(path);
     const hidden = photo && state.hiddenProjectPhotos.has(photo);
     return `<article class="asset-card ${override ? 'replaced' : ''} ${hidden ? 'asset-hidden' : ''}" data-asset="${escapeHtml(path)}">
@@ -365,7 +368,7 @@ function renderAssets() {
       <div class="asset-info"><strong title="${escapeHtml(imageLabel(path))}">${escapeHtml(imageLabel(path))}</strong><small title="${escapeHtml(path)}">${escapeHtml(path)}</small></div>
       ${hidden ? '<div class="asset-visibility-status">Excluída do site</div>' : ''}
       <div class="asset-actions">
-        <button class="btn btn-ghost" data-replace-asset="${escapeHtml(path)}">Substituir</button>
+        ${added ? '' : `<button class="btn btn-ghost" data-replace-asset="${escapeHtml(path)}">Substituir</button>`}
         ${override ? `<button class="btn btn-ghost" data-restore-asset="${escapeHtml(path)}">Restaurar</button>` : ''}
         ${photo ? hidden ? `<button class="btn btn-primary" data-show-photo="${escapeHtml(photo)}">Mostrar novamente</button>` : `<button class="btn btn-danger" data-delete-photo="${escapeHtml(photo)}">Excluir imagem</button>` : ''}
       </div>
@@ -376,9 +379,9 @@ function renderAssets() {
     $('#asset-file-input').value = '';
     $('#asset-file-input').click();
   }));
-  $('[data-restore-asset]', root).forEach(button => button.addEventListener('click', () => restoreAsset(button.dataset.restoreAsset)));
-  $('[data-delete-photo]', root).forEach(button => button.addEventListener('click', () => confirmPhotoDeletion(button.dataset.deletePhoto)));
-  $('[data-show-photo]', root).forEach(button => button.addEventListener('click', async () => {
+  $$('[data-restore-asset]', root).forEach(button => button.addEventListener('click', () => restoreAsset(button.dataset.restoreAsset)));
+  $$('[data-delete-photo]', root).forEach(button => button.addEventListener('click', () => confirmPhotoDeletion(button.dataset.deletePhoto)));
+  $$('[data-show-photo]', root).forEach(button => button.addEventListener('click', async () => {
     button.disabled = true;
     try {
       await setProjectPhotoHidden(button.dataset.showPhoto, false, state.user);
@@ -406,9 +409,9 @@ function confirmPhotoDeletion(path) {
     <p id="photo-delete-description">A foto deixará de aparecer no site, inclusive na galeria e na versão para celular. As demais fotos do projeto serão mantidas. Você poderá mostrar esta imagem novamente pelo painel.</p>
     <p class="photo-delete-error" role="alert" hidden></p>
     <footer><button type="button" class="btn btn-ghost photo-delete-cancel" autofocus>Cancelar</button><button type="button" class="btn btn-danger photo-delete-confirm">Excluir imagem</button></footer>`;
-  const preview = state.assetOverrides.get(path)?.url || '../'+path;
+  const preview = state.addedProjectPhotos.get(path)?.url || state.assetOverrides.get(path)?.url || '../'+path;
   dialog.querySelector('img').src = preview;
-  dialog.querySelector('strong').textContent = `Casa ${code.toUpperCase()} — foto ${number}`;
+  dialog.querySelector('strong').textContent = `Casa ${code.toUpperCase()} — ${isAddedPhoto(path)?'foto adicionada':'foto '+number}`;
   const cancel = dialog.querySelector('.photo-delete-cancel');
   const close = dialog.querySelector('.photo-delete-close');
   const confirm = dialog.querySelector('.photo-delete-confirm');
@@ -442,6 +445,50 @@ function confirmPhotoDeletion(path) {
   document.body.appendChild(dialog);
   dialog.showModal();
 }
+
+function openAddPhotosDialog(initialKey) {
+  if(!state.user||!state.admin||$('#photo-add-dialog'))return;
+  const dialog=document.createElement('dialog');
+  dialog.id='photo-add-dialog';dialog.className='photo-delete-dialog';
+  dialog.setAttribute('aria-labelledby','photo-add-title');
+  dialog.innerHTML=`<p class="eyebrow">Gerenciar galeria</p><h2 id="photo-add-title">Adicionar fotos</h2><p>Escolha o projeto e selecione uma ou mais imagens. As novas fotos serão exibidas na mesma galeria.</p><form><label>Projeto<select name="project" required>${PROJECT_KEYS.map(key=>`<option value="${key}">Casa ${key}</option>`).join('')}</select></label><label>Imagens (até 30 MB cada)<input type="file" name="photos" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" multiple required></label><p class="photo-add-progress" role="status"></p><p class="photo-delete-error" role="alert" hidden></p><footer><button type="button" class="btn btn-ghost photo-add-cancel">Cancelar</button><button type="submit" class="btn btn-primary">Adicionar fotos</button></footer></form>`;
+  const form=dialog.querySelector('form'), cancel=dialog.querySelector('.photo-add-cancel'), submit=form.querySelector('[type=submit]'), progress=dialog.querySelector('.photo-add-progress'), errorEl=dialog.querySelector('.photo-delete-error');
+  if(PROJECT_KEYS.includes(initialKey))form.elements.project.value=initialKey;
+  let busy=false;
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault()});
+  cancel.addEventListener('click',()=>dialog.close());
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();if(busy)return;
+    const key=form.elements.project.value, selected=[...form.elements.photos.files];
+    if(!PROJECT_KEYS.includes(key)||!selected.length)return;
+    if(selected.some(file=>!['image/jpeg','image/png','image/webp','image/avif','image/gif'].includes(file.type)||file.size>30*1024*1024)){
+      errorEl.textContent='Selecione imagens válidas de até 30 MB cada.';errorEl.hidden=false;return;
+    }
+    busy=true;cancel.disabled=submit.disabled=true;form.elements.project.disabled=form.elements.photos.disabled=true;errorEl.hidden=true;
+    let completed=0;
+    try{
+      await requirePhotoAdmin(state.user);
+      for(const file of selected){
+        const id=crypto.randomUUID(),path=`assets/images/projects/${key.toLowerCase()}-extra-${id}.webp`;
+        progress.textContent=`Enviando ${completed+1} de ${selected.length}…`;
+        const uploaded=await uploadFile(file,`site/assets/projects/${key.toLowerCase()}-${id}-${safeStorageSegment(file.name)}`);
+        await addProjectPhoto(path,uploaded,state.user);
+        completed++;
+      }
+      dialog.close();
+      if(state.currentView==='images')await loadImages();
+      toast(`${completed} foto(s) adicionada(s) ao projeto.`);
+    }catch(error){
+      errorEl.textContent=`${completed} foto(s) salva(s). ${error.message||'Falha ao adicionar as demais.'} Selecione apenas as fotos que faltaram para tentar novamente.`;errorEl.hidden=false;
+      form.elements.photos.value='';
+      if(state.currentView==='images')await loadImages();
+    }finally{busy=false;cancel.disabled=submit.disabled=false;form.elements.project.disabled=form.elements.photos.disabled=false;progress.textContent='';}
+  });
+  document.body.appendChild(dialog);dialog.showModal();
+}
+$('#add-project-photos').addEventListener('click',()=>openAddPhotosDialog());
+window.addEventListener('azo:add-project-photos',event=>openAddPhotosDialog(event.detail?.key));
 
 async function loadImages() {
   $('#asset-grid').innerHTML = '<div class="loading-grid"><div class="skeleton"></div><div class="skeleton"></div></div>';

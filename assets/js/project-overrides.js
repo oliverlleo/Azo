@@ -13,13 +13,15 @@ const DEFAULTS = {
 };
 const overrides = new Map();
 let hiddenPhotos = new Set();
+let addedPhotos = new Map();
 
-function photos(key){ return visibleProjectPhotos(key,hiddenPhotos); }
+function photos(key){ return visibleProjectPhotos(key,hiddenPhotos,addedPhotos); }
+function photoURL(path){return addedPhotos.get(path)?.url || new URL('../images/projects/'+path.split('/').pop(),import.meta.url).href;}
 function cover(img,key,thumbnail=false){
   const first=photos(key)[0];
   if(!img || !first) return;
-  const path=thumbnail?first.replace('.webp','-sm.webp'):first;
-  const url=new URL('../images/projects/'+path.split('/').pop(),import.meta.url).href;
+  const path=thumbnail&&!addedPhotos.has(first)?first.replace('.webp','-sm.webp'):first;
+  const url=photoURL(path);
   img.removeAttribute('srcset');
   img.dataset.cmsSource=path;
   img.src=window.AZO_CMS?.resolveAsset(url)||url;
@@ -136,8 +138,9 @@ function rebuildHomeProjects(){
 
 async function load(){
   try{
-    const [snap,hidden]=await Promise.all([getDocs(collection(db,'projectSettings')),readProjectPhotoVisibility()]);
-    hiddenPhotos=hidden;
+    const [snap,visibility]=await Promise.all([getDocs(collection(db,'projectSettings')),readProjectPhotoVisibility()]);
+    hiddenPhotos=visibility.hidden;
+    addedPhotos=visibility.additions;
     snap.forEach(item=>{
       const data=item.data();
       if(data?.builtinKey && ORDER.includes(String(data.builtinKey).toUpperCase())){
@@ -151,7 +154,7 @@ async function load(){
     applyProjectsPage();
     rebuildHomeProjects();
     installLightboxTitleSync();
-    window.AZO_PROJECT_PHOTOS={photos:key=>current(key).published?photos(key):[]};
+    window.AZO_PROJECT_PHOTOS={photos:key=>current(key).published?photos(key):[],url:photoURL};
     document.documentElement.dataset.azoProjectPhotosReady='true';
   }catch(error){
     document.documentElement.dataset.azoProjectPhotosReady='failed';

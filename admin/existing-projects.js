@@ -81,7 +81,7 @@ function render() {
       </div>
       <div class="project-actions" style="flex-wrap:wrap;justify-content:flex-end">
         <button class="btn btn-ghost" type="button" data-existing-edit="${project.builtinKey}">Editar</button>
-        <button class="btn btn-ghost" type="button" data-existing-photos="${project.builtinKey}">Gerenciar fotos</button>
+        <button class="btn btn-ghost" type="button" data-existing-photos="${project.builtinKey}">Gerenciar fotos</button><button class="btn btn-primary" type="button" data-existing-add="${project.builtinKey}">+ Adicionar fotos</button>
         <button class="btn ${project.published ? 'btn-danger' : 'btn-primary'}" type="button" data-existing-toggle="${project.builtinKey}">${project.published ? 'Remover do site' : 'Mostrar novamente'}</button>
         ${project.hasOverride ? `<button class="btn btn-ghost" type="button" data-existing-restore="${project.builtinKey}">Voltar ao original</button>` : ''}
       </div>
@@ -89,6 +89,7 @@ function render() {
 
   root.querySelectorAll('[data-existing-edit]').forEach(btn=>btn.addEventListener('click',()=>openModal(btn.dataset.existingEdit)));
   root.querySelectorAll('[data-existing-photos]').forEach(btn=>btn.addEventListener('click',()=>openPhotos(btn.dataset.existingPhotos)));
+  root.querySelectorAll('[data-existing-add]').forEach(btn=>btn.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('azo:add-project-photos',{detail:{key:btn.dataset.existingAdd}}))));
   root.querySelectorAll('[data-existing-toggle]').forEach(btn=>btn.addEventListener('click',()=>toggleProject(btn.dataset.existingToggle)));
   root.querySelectorAll('[data-existing-restore]').forEach(btn=>btn.addEventListener('click',()=>restoreProject(btn.dataset.existingRestore)));
 }

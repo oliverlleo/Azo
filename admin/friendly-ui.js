@@ -42,6 +42,8 @@ function pageName() {
 
 function imageInfo(path = '') {
   if (IMAGE_LABELS[path]) return IMAGE_LABELS[path];
+  const extra=path.match(/assets\/images\/projects\/([a-z]+)-extra-/i);
+  if(extra)return [`Casa ${extra[1].toUpperCase()} — foto adicionada`,'Nova foto da galeria'];
   const project = path.match(/assets\/images\/projects\/([a-z]+)-(\d+)(-sm)?\.webp$/i);
   if (project) {
     const code = project[1].toUpperCase();

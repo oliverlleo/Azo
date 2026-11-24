@@ -14,3 +14,15 @@ assert.deepEqual(visibleProjectPhotos('AS',new Set(visibleProjectPhotos('AS',new
 assert.equal(hiddenProjectPhotos([{id:photoRecordId(first),items:[{key:first,type:'project-photo-visibility',value:false}]}]).size,0);
 assert.equal(hiddenProjectPhotos([{id:photoRecordId(second),items:[{key:first,type:'project-photo-visibility',value:true}]}]).size,0);
 console.log('Project photo visibility tests passed.');
+
+const {addedProjectPhotos,isAddedPhoto}=await import('../assets/js/project-photo-visibility.mjs');
+const extra='assets/images/projects/as-extra-12345678-1234-1234-1234-123456789abc.webp';
+const origin='https://example.supabase.co';
+const entry={id:photoRecordId(extra),items:[{key:extra,type:'project-photo-added',url:origin+'/storage/v1/object/public/azo-media/site/assets/projects/test.webp',createdAt:'2026-11-24'}]};
+const additions=addedProjectPhotos([entry],origin);
+assert.equal(isAddedPhoto(extra),true);
+assert.equal(additions.size,1);
+assert.equal(visibleProjectPhotos('AS',new Set(),additions).length,7);
+assert.equal(visibleProjectPhotos('HL',new Set(),additions).length,6);
+assert.equal(visibleProjectPhotos('AS',new Set([extra]),additions).length,6);
+assert.equal(addedProjectPhotos([entry],'https://other.example').size,0);
