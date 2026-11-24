@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {deviceForWidth,validPosition,nextPositionItems,positionItemKey,cropTravel,dragPosition} from '../assets/js/image-position.mjs';
+assert.equal(deviceForWidth(390),'mobile');assert.equal(deviceForWidth(680),'mobile');assert.equal(deviceForWidth(820),'tablet');assert.equal(deviceForWidth(1050),'tablet');assert.equal(deviceForWidth(1100),'desktop');
+assert.equal(validPosition([50,NaN]),false);assert.equal(validPosition([101,0]),false);assert.equal(validPosition([50,0]),true);
+const key='body>main>img',old=[{key:'text:other',type:'text',value:'unchanged'}];
+const desktop=nextPositionItems(old,key,'desktop',[10,20]),tablet=nextPositionItems(desktop,key,'tablet',[30,40]),mobile=nextPositionItems(tablet,key,'mobile',[50,60]);
+assert.equal(mobile.length,4);assert.deepEqual(mobile.find(i=>i.key===positionItemKey(key,'desktop')).value,[10,20]);
+const reset=nextPositionItems(mobile,key,'mobile',null);
+assert.equal(reset.length,3);assert.deepEqual(reset.find(i=>i.key===positionItemKey(key,'tablet')).value,[30,40]);assert.equal(reset[0].value,'unchanged');
+assert.deepEqual(cropTravel(400,200,400,400,'cover'),[0,-200]);assert.deepEqual(dragPosition([50,50],0,50,[0,-200]),[50,25]);assert.deepEqual(dragPosition([50,50],0,500,[0,-200]),[50,0]);
+assert.deepEqual(cropTravel(400,200,400,400,'contain'),[200,0]);assert.deepEqual(dragPosition([50,50],50,0,[200,0]),[75,50]);
+console.log('Responsive image positioning: all assertions passed.');

@@ -1,8 +1,12 @@
 import { db, collection, doc, getDoc, getDocs } from './firebase-config.js';
 import { normalizePageId, applyPageOverrides, normalizeAssetPath } from './cms-core.js';
+import { imagePositionKey, applyImagePositionItems, ensurePositionStyle } from './image-position.mjs';
 
 const assetMap = new Map();
-const pageId = normalizePageId(location.pathname);
+const pageId = document.documentElement.dataset.azoPreviewPage || normalizePageId(location.pathname);
+let positionItems=null;
+ensurePositionStyle(document);
+document.querySelectorAll('img').forEach(imagePositionKey);
 let gateTimedOut = false;
 let readySignaled = false;
 
@@ -69,8 +73,13 @@ function watchImages() {
     for (const record of records) {
       if (record.type === 'attributes' && record.target instanceof HTMLImageElement) resolveImage(record.target);
       for (const node of record.addedNodes || []) {
-        if (node instanceof HTMLImageElement) resolveImage(node);
-        else if (node instanceof Element) resolveAllImages(node);
+        if (node instanceof HTMLImageElement) {
+          resolveImage(node);
+          if(positionItems)applyImagePositionItems(node,positionItems);
+        } else if (node instanceof Element) {
+          resolveAllImages(node);
+          if(positionItems)node.querySelectorAll('img').forEach(img=>applyImagePositionItems(img,positionItems));
+        }
       }
     }
   });
@@ -89,9 +98,11 @@ async function loadAssets() {
 
 async function loadPage() {
   const snap = await getDoc(doc(db, 'sitePages', pageId));
-  if (gateTimedOut || !snap.exists()) return;
-  const data = snap.data();
-  applyPageOverrides(document, Array.isArray(data.items) ? data.items : []);
+  const data=snap.exists()?snap.data():{};
+  const items=Array.isArray(data.items)?data.items:[];
+  positionItems=items.filter(i=>i.type==='image-position');
+  if(!gateTimedOut)applyPageOverrides(document,items);
+  document.querySelectorAll('img').forEach(img=>applyImagePositionItems(img,positionItems));
 }
 
 function injectProjectStyles() {
@@ -207,7 +218,12 @@ function signalReady(ok) {
   window.dispatchEvent(new CustomEvent('azo:cms-ready', { detail: { ok } }));
 }
 
-window.AZO_CMS = { assetMap, resolveAsset, canonicalAsset };
+window.AZO_CMS = { assetMap, resolveAsset, canonicalAsset,
+  updateImagePositions(items){
+    positionItems=items.filter(i=>i.type==='image-position');
+    document.querySelectorAll('img').forEach(img=>applyImagePositionItems(img,positionItems));
+  }
+};
 
 (async () => {
   try {
