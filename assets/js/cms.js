@@ -1,3 +1,5 @@
+import {readProjectCovers} from './project-cover-store.js';
+import {coverId,chooseCover} from './project-cover.mjs';
 import {renderTeamHotspots,isTeamPhoto,TEAM_SELECTOR} from './team-hotspots.mjs?v=20261125-team';
 import { db, collection, doc, getDoc, getDocs } from './firebase-config.js';
 import { normalizePageId, applyPageOverrides, normalizeAssetPath } from './cms-core.js';
@@ -180,7 +182,7 @@ async function loadProjects() {
   if (pageId !== 'projetos' || gateTimedOut) return;
   const grid = document.querySelector('.projects-grid');
   if (!grid) return;
-  const snap = await getDocs(collection(db, 'projects'));
+  const [snap,covers]=await Promise.all([getDocs(collection(db, 'projects')),readProjectCovers().catch(()=>new Map())]);
   if (gateTimedOut) return;
   const projects = snap.docs.map(item => ({ id: item.id, ...item.data() }))
     .filter(project => project.published !== false)
@@ -188,7 +190,7 @@ async function loadProjects() {
   for (const project of projects) {
     if (!project?.title || !project?.images?.length) continue;
     if (grid.querySelector(`[data-cms-project="${CSS.escape(project.id)}"]`)) continue;
-    const cover = project.coverUrl || project.images[0]?.url;
+    const cover=chooseCover(covers.get(coverId('custom',project.id)),project.images.filter(i=>i?.url).map(i=>({key:i.url,url:i.url})),project.coverUrl||project.images[0]?.url).url;
     if (!cover) continue;
     const card = document.createElement('article');
     card.className = 'portfolio-card';
@@ -196,7 +198,8 @@ async function loadProjects() {
     card.tabIndex = 0;
     card.setAttribute('role','button');
     card.setAttribute('aria-label', `Abrir galeria ${project.title}`);
-    card.innerHTML = `<img src="${cover}" alt="${project.coverAlt || project.title}" loading="lazy"><div class="portfolio-card__text"><div><h3></h3><span></span></div><span>↗</span></div>`;
+    card.innerHTML = `<img loading="lazy"><div class="portfolio-card__text"><div><h3></h3><span></span></div><span>↗</span></div>`;
+    card.querySelector('img').src=cover;card.querySelector('img').alt=project.title;
     card.querySelector('h3').textContent = project.title;
     card.querySelector('.portfolio-card__text div span').textContent = project.category || 'Projeto · abrir galeria';
     card.addEventListener('click', () => openProject(project));
