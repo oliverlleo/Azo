@@ -45,7 +45,7 @@ export function renderTeamHotspots(doc,items){
  const host=img.closest('.about-media,.inner-hero');
  if(!host)return;
  const style=doc.createElement('style');
- style.textContent='.azo-team-hotspots{position:absolute;inset:0;z-index:1;pointer-events:none}.about-media>.azo-team-hotspots{z-index:3}.azo-team-hotspots button{position:absolute;pointer-events:auto;cursor:pointer;background:transparent;border:0;border-radius:10px;padding:0;touch-action:manipulation}.azo-team-hotspots button:focus-visible{outline:2px solid #d5c0a6;outline-offset:-2px}.azo-team-label{position:absolute;pointer-events:none;max-width:calc(100% - 20px);width:max-content;background:#0d2f35;color:#fff;border:1px solid #d5c0a6;border-radius:12px;padding:10px 16px;box-shadow:0 8px 26px #071b1f55;z-index:2;text-align:center;line-height:1.2}.azo-team-label[hidden]{display:none!important}.azo-team-label strong{display:block;font:400 1.15rem Georgia,serif;overflow-wrap:anywhere}.azo-team-label small{display:block;color:#d5c0a6;font:600 .68rem system-ui;margin-top:4px;overflow-wrap:anywhere}.azo-team-label:after{content:"";position:absolute;left:var(--arrow,50%);bottom:-5px;width:8px;height:8px;background:#0d2f35;border-right:1px solid #d5c0a6;border-bottom:1px solid #d5c0a6;transform:translateX(-50%) rotate(45deg)}.azo-team-label[data-below]:after{top:-5px;bottom:auto;transform:translateX(-50%) rotate(225deg)}';
+ style.textContent='.azo-team-hotspots{position:absolute;inset:0;z-index:1;pointer-events:none}.about-media>.azo-team-hotspots{z-index:3}.azo-team-hotspots button{position:absolute;pointer-events:auto;cursor:pointer;background:transparent;border:0;border-radius:10px;padding:0;touch-action:manipulation}.azo-team-hotspots button:focus-visible{outline:2px solid #d5c0a6;outline-offset:-2px}.azo-team-label{position:absolute;pointer-events:none;max-width:calc(100% - 20px);width:max-content;background:#0d2f35;color:#fff;border:1px solid #d5c0a6;border-radius:12px;padding:10px 16px;box-shadow:0 8px 26px #071b1f55;z-index:2;text-align:center;line-height:1.2}.azo-team-label[hidden],.azo-team-label [hidden],.azo-team-hotspots button[hidden]{display:none!important}.azo-team-label strong{display:block;font:400 1.15rem Georgia,serif;overflow-wrap:anywhere}.azo-team-label small{display:block;color:#d5c0a6;font:600 .68rem system-ui;margin-top:4px;overflow-wrap:anywhere}.azo-team-label:after{content:"";position:absolute;left:var(--arrow,50%);bottom:-5px;width:8px;height:8px;background:#0d2f35;border-right:1px solid #d5c0a6;border-bottom:1px solid #d5c0a6;transform:translateX(-50%) rotate(45deg)}.azo-team-label[data-below]:after{top:-5px;bottom:auto;transform:translateX(-50%) rotate(225deg)}';
  doc.head.append(style);
  const layer=doc.createElement('div');layer.className='azo-team-hotspots';layer.setAttribute('data-cms-ignore','');
  const label=doc.createElement('div');label.className='azo-team-label';label.hidden=true;label.id='azo-team-person-label';label.setAttribute('role','tooltip');
@@ -58,7 +58,8 @@ export function renderTeamHotspots(doc,items){
   button.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!pinned)hide()});
   button.addEventListener('focus',()=>{if(button.matches(':focus-visible'))show(entry,false)});
   button.addEventListener('blur',()=>{if(!pinned)hide()});
-  button.addEventListener('click',()=>{if(current===entry&&pinned)hide();else show(entry,true)});
+  let pointerType='';button.addEventListener('pointerdown',e=>{pointerType=e.pointerType});
+  button.addEventListener('click',e=>{const pin=e.detail===0||pointerType!=='mouse';if(current===entry&&pinned&&pin)hide();else show(entry,pin)});
   layer.append(button);return entry;
  });
  layer.append(label);host.append(layer);
