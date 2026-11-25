@@ -1,3 +1,4 @@
+import { previewPoint } from './visual-editor-responsive.js?v=20261125-responsive';
 import { auth, db } from '../assets/js/firebase-config.js';
 import { doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 
@@ -18,7 +19,7 @@ function frame(){return $('#ve3-frame');}
 function frameDoc(){return frame()?.contentDocument||null;}
 function pageId(){return $('#ve3-page')?.value||'index';}
 function pageLabel(){return $('#ve3-page')?.selectedOptions?.[0]?.textContent||'Página do site';}
-function point(e){const r=$('#ve3-glass')?.getBoundingClientRect();return r?{x:e.clientX-r.left,y:e.clientY-r.top}:null;}
+function point(e){return previewPoint(e);}
 
 function pathOf(el,root){
  const parts=[];

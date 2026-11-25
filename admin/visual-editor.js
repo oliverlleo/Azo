@@ -6,9 +6,9 @@ import './auth-ui-stability.js?v=20260810-0723';
 // Permite escolher todos os textos de um mesmo bloco e todas as imagens sobrepostas,
 // inclusive imagens ocultas de carrosséis. Quando o clique é exatamente sobre texto,
 // a edição de texto tem prioridade sobre imagens de fundo.
-import './visual-editor-v3.js?v=20261124-position';
-import './visual-editor-v3-precision.js?v=20261124-position';
-import './visual-editor-text-precision.js?v=20260809-2038';
+import './visual-editor-v3.js?v=20261125-responsive';
+import './visual-editor-v3-precision.js?v=20261125-responsive';
+import './visual-editor-text-precision.js?v=20261125-responsive';
 import './visual-editor-scrollbar-fix.js?v=20260812-1321';
 
 // Carrega a página do site como HTML dentro da prévia. Isso evita iframe branco
