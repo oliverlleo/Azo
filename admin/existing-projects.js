@@ -1,3 +1,5 @@
+import {loadCoverContext,builtinCoverPhotos,openCoverEditor} from './project-cover-editor.js?v=20261125-cover';
+import {coverId,chooseCover} from '../assets/js/project-cover.mjs';
 import { auth, db, doc, getDoc, setDoc, deleteDoc, serverTimestamp, onAuthStateChanged } from '../assets/js/firebase-config.js';
 
 const BUILTINS = [
@@ -11,7 +13,7 @@ const BUILTINS = [
 
 const $ = (s,r=document)=>r.querySelector(s);
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let data = [];
+let data = [],coverContext=null;
 let user = null;
 
 function toast(message, type='success') {
@@ -73,7 +75,7 @@ function render() {
   if (!root) return;
   root.innerHTML = data.map(project => `
     <article class="project-row">
-      <div class="project-thumb"><img src="../assets/images/projects/${project.builtinKey.toLowerCase()}-1.webp" alt="${escapeHtml(project.title)}"></div>
+      <div class="project-thumb"><img src="${escapeHtml(project.displayCover||`../assets/images/projects/${project.builtinKey.toLowerCase()}-1.webp`)}" alt="${escapeHtml(project.title)}"></div>
       <div class="project-meta">
         <h3>${escapeHtml(project.title)}</h3>
         <p>${escapeHtml(project.category || 'Projeto')}</p>
@@ -81,12 +83,13 @@ function render() {
       </div>
       <div class="project-actions" style="flex-wrap:wrap;justify-content:flex-end">
         <button class="btn btn-ghost" type="button" data-existing-edit="${project.builtinKey}">Editar</button>
-        <button class="btn btn-ghost" type="button" data-existing-photos="${project.builtinKey}">Gerenciar fotos</button><button class="btn btn-primary" type="button" data-existing-add="${project.builtinKey}">+ Adicionar fotos</button>
+        <button class="btn btn-ghost" type="button" data-existing-cover="${project.builtinKey}">Editar capa</button><button class="btn btn-ghost" type="button" data-existing-photos="${project.builtinKey}">Gerenciar fotos</button><button class="btn btn-primary" type="button" data-existing-add="${project.builtinKey}">+ Adicionar fotos</button>
         <button class="btn ${project.published ? 'btn-danger' : 'btn-primary'}" type="button" data-existing-toggle="${project.builtinKey}">${project.published ? 'Remover do site' : 'Mostrar novamente'}</button>
         ${project.hasOverride ? `<button class="btn btn-ghost" type="button" data-existing-restore="${project.builtinKey}">Voltar ao original</button>` : ''}
       </div>
     </article>`).join('');
 
+  root.querySelectorAll('[data-existing-cover]').forEach(btn=>btn.addEventListener('click',async()=>{btn.disabled=true;try{const key=btn.dataset.existingCover,project=data.find(p=>p.builtinKey===key);const ctx=await loadCoverContext();const photos=await builtinCoverPhotos(key,ctx.visibility,ctx.assets);await openCoverEditor({kind:'builtin',id:key,title:project.title,photos,setting:ctx.covers.get(coverId('builtin',key)),fallback:photos[0]?.url,onSaved:async()=>{await load();toast('Capa atualizada no portfólio.')}})}catch(e){toast(e.message||'Não foi possível abrir o editor de capa.','error')}finally{btn.disabled=false}}));
   root.querySelectorAll('[data-existing-edit]').forEach(btn=>btn.addEventListener('click',()=>openModal(btn.dataset.existingEdit)));
   root.querySelectorAll('[data-existing-photos]').forEach(btn=>btn.addEventListener('click',()=>openPhotos(btn.dataset.existingPhotos)));
   root.querySelectorAll('[data-existing-add]').forEach(btn=>btn.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('azo:add-project-photos',{detail:{key:btn.dataset.existingAdd}}))));
@@ -190,11 +193,15 @@ async function load() {
   ensurePanel();
   const root = $('#existing-project-list');
   if (root) root.innerHTML='<div class="loading-grid"><div class="skeleton"></div><div class="skeleton"></div></div>';
+  coverContext=await loadCoverContext().catch(()=>null);
   const rows = [];
   for (const base of BUILTINS) {
     const snap = await getDoc(doc(db,'projectSettings',`builtin-${base.key}`));
     const saved = snap.exists() ? snap.data() : {};
+    const photos=coverContext?await builtinCoverPhotos(base.key,coverContext.visibility,coverContext.assets):[];
+    const displayCover=chooseCover(coverContext?.covers.get(coverId('builtin',base.key)),photos).url;
     rows.push({
+      displayCover,
       ...base,
       ...saved,
       id:`builtin-${base.key}`,

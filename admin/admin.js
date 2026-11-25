@@ -1,3 +1,7 @@
+import {openCoverEditor,customCoverPhotos} from './project-cover-editor.js?v=20261125-cover';
+import {readProjectCovers} from '../assets/js/project-cover-store.js';
+import {coverId,chooseCover} from '../assets/js/project-cover.mjs';
+let customCovers=new Map();
 import { auth, db, storage } from '../assets/js/firebase-config.js';
 import {
   onAuthStateChanged,
@@ -583,7 +587,7 @@ async function loadProjects() {
   const root = $('#project-list');
   root.innerHTML = '<div class="loading-grid"><div class="skeleton"></div><div class="skeleton"></div></div>';
   try {
-    const snap = await getDocs(collection(db, 'projects'));
+    const [snap,covers]=await Promise.all([getDocs(collection(db, 'projects')),readProjectCovers().catch(()=>new Map())]);customCovers=covers;
     state.projects = snap.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (Number(a.order) || 9999) - (Number(b.order) || 9999));
     renderProjects();
   } catch (error) {
@@ -598,14 +602,15 @@ function renderProjects() {
     return;
   }
   root.innerHTML = state.projects.map(project => {
-    const cover = project.coverUrl || project.images?.[0]?.url || '';
+    const cover=chooseCover(customCovers.get(coverId('custom',project.id)),customCoverPhotos(project),project.coverUrl||project.images?.[0]?.url).url;
     return `<article class="project-row">
       <div class="project-thumb">${cover ? `<img src="${escapeHtml(cover)}" alt="">` : ''}</div>
       <div class="project-meta"><h3>${escapeHtml(project.title || 'Sem título')}</h3><p>${escapeHtml(project.category || 'Projeto')} · ${project.images?.length || 0} imagem(ns)</p><div class="chips"><span class="status ${project.published === false ? 'off' : 'ok'}">${project.published === false ? 'Rascunho' : 'Publicado'}</span><span class="chip">Ordem ${Number(project.order) || 100}</span></div></div>
-      <div class="project-actions"><button class="btn btn-ghost" data-edit-project="${project.id}">Editar</button><button class="btn btn-danger" data-delete-project="${project.id}">Excluir</button></div>
+      <div class="project-actions"><button class="btn btn-ghost" data-edit-project="${project.id}">Editar</button><button class="btn btn-ghost" data-cover-project="${escapeHtml(project.id)}">Editar capa</button><button class="btn btn-danger" data-delete-project="${project.id}">Excluir</button></div>
     </article>`;
   }).join('');
-  $$('[data-edit-project]', root).forEach(button => button.addEventListener('click', () => openProjectModal(button.dataset.editProject)));
+  $('[data-cover-project]', root).forEach(btn=>btn.addEventListener('click',async()=>{btn.disabled=true;try{const project=state.projects.find(p=>p.id===btn.dataset.coverProject);if(!project)return;const covers=await readProjectCovers();await openCoverEditor({kind:'custom',id:project.id,title:project.title,photos:customCoverPhotos(project),setting:covers.get(coverId('custom',project.id)),fallback:project.coverUrl||project.images?.[0]?.url,onSaved:async()=>{await loadProjects();toast('Capa atualizada no portfólio.')}})}catch(e){toast(e.message||'Não foi possível abrir o editor de capa.','error')}finally{btn.disabled=false}}));
+  $('[data-edit-project]', root).forEach(button => button.addEventListener('click', () => openProjectModal(button.dataset.editProject)));
   $$('[data-delete-project]', root).forEach(button => button.addEventListener('click', () => deleteProject(button.dataset.deleteProject)));
 }
 
