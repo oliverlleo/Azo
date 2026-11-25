@@ -17,11 +17,6 @@ style.textContent=`
 #ve3-glass[data-positioning]:active{cursor:grabbing}
 #ve3-glass[data-positioning]::before{content:'MODO POSICIONAR • ARRASTE A IMAGEM';background:#a65c3a;white-space:nowrap}
 #ve3-glass[data-positioning] #ve3-badge{display:none!important}
-#ve3-stage{flex:none;transition:none!important}
-#ve3-stage[data-device=desktop]{width:max(1100px,100%)}
-#ve3-stage[data-device=tablet]{width:820px!important}
-#ve3-stage[data-device=mobile]{width:390px!important}
-.ve3-canvas{justify-content:safe center}
 `;
 document.head.appendChild(style);
 function notice(message,type='success'){
