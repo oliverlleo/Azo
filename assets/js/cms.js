@@ -1,10 +1,13 @@
+import {renderTeamHotspots,isTeamPhoto,TEAM_SELECTOR} from './team-hotspots.mjs?v=20261125-team';
 import { db, collection, doc, getDoc, getDocs } from './firebase-config.js';
 import { normalizePageId, applyPageOverrides, normalizeAssetPath } from './cms-core.js';
 import { imagePositionKey, applyImagePositionItems, ensurePositionStyle } from './image-position.mjs';
 
 const assetMap = new Map();
 const pageId = document.documentElement.dataset.azoPreviewPage || normalizePageId(location.pathname);
-let positionItems=null;
+let positionItems=null,teamItems=[];
+// Mark the original team photo before asset replacement changes its URL.
+document.querySelectorAll(TEAM_SELECTOR).forEach(img=>{if(isTeamPhoto(img))img.setAttribute('data-azo-team-photo','')});
 ensurePositionStyle(document);
 document.querySelectorAll('img').forEach(imagePositionKey);
 let gateTimedOut = false;
@@ -100,6 +103,7 @@ async function loadPage() {
   const snap = await getDoc(doc(db, 'sitePages', pageId));
   const data=snap.exists()?snap.data():{};
   const items=Array.isArray(data.items)?data.items:[];
+  teamItems=items.filter(i=>i.type==='image-hotspot');
   positionItems=items.filter(i=>i.type==='image-position');
   if(!gateTimedOut)applyPageOverrides(document,items);
   document.querySelectorAll('img').forEach(img=>applyImagePositionItems(img,positionItems));
@@ -230,6 +234,7 @@ window.AZO_CMS = { assetMap, resolveAsset, canonicalAsset,
   try {
     watchImages();
     await Promise.all([loadAssets(), loadPage()]);
+    renderTeamHotspots(document,teamItems);
     if (gateTimedOut) return;
     await loadProjects();
     if (gateTimedOut) return;
