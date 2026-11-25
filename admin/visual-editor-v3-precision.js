@@ -2,7 +2,8 @@ import { auth, db, storage } from '../assets/js/firebase-config.js';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js';
 import { assetDocId } from '../assets/js/cms-core.js';
-import { mountImagePositioning } from './visual-editor-image-position.js?v=20261124-position';
+import { mountImagePositioning } from './visual-editor-image-position.js?v=20261125-responsive';
+import { previewPoint } from './visual-editor-responsive.js?v=20261125-responsive';
 
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -15,7 +16,7 @@ function toast(message,type='success'){
 function pageId(){return $('#ve3-page')?.value||'index';}
 function pageLabel(){return $('#ve3-page')?.selectedOptions?.[0]?.textContent||'Página do site';}
 function frameDoc(){return $('#ve3-frame')?.contentDocument||null;}
-function point(e){const r=$('#ve3-glass')?.getBoundingClientRect();return r?{x:e.clientX-r.left,y:e.clientY-r.top}:{x:0,y:0};}
+function point(e){return previewPoint(e)||{x:0,y:0};}
 
 function pathOf(el,root){const parts=[];for(let n=el;n&&n.nodeType===1;n=n.parentElement){let p=n.tagName.toLowerCase(),par=n.parentElement;if(par){const same=[...par.children].filter(c=>c.tagName===n.tagName);if(same.length>1)p+=`:nth-of-type(${same.indexOf(n)+1})`;}parts.unshift(p);if(n===root)break;}return parts.join('>');}
 function textKey(node,docu){const p=node?.parentElement;if(!p)return'';const i=[...p.childNodes].filter(n=>n.nodeType===3).indexOf(node);return`text:${pathOf(p,docu.body)}::${i}`;}
