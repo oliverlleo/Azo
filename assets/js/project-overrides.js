@@ -1,3 +1,5 @@
+import {readProjectCovers} from './project-cover-store.js';
+import {coverId,chooseCover} from './project-cover.mjs';
 import { db, collection, getDocs } from './firebase-config.js';
 import { visibleProjectPhotos } from './project-photo-visibility.mjs';
 import { readProjectPhotoVisibility } from './project-photo-store.js';
@@ -13,7 +15,7 @@ const DEFAULTS = {
 };
 const overrides = new Map();
 let hiddenPhotos = new Set();
-let addedPhotos = new Map();
+let addedPhotos = new Map(),projectCovers=new Map();
 
 function photos(key){ return visibleProjectPhotos(key,hiddenPhotos,addedPhotos); }
 function photoURL(path){return addedPhotos.get(path)?.url || new URL('../images/projects/'+path.split('/').pop(),import.meta.url).href;}
@@ -45,7 +47,7 @@ function applyProjectsPage(){
       const img=card.querySelector('img');
       if(title) title.textContent=project.title;
       if(meta) meta.textContent=`${project.category || 'Projeto'} · abrir galeria`;
-      if(img){img.alt=project.title;cover(img,key);}
+      if(img){img.alt=project.title;const list=photos(key).map(path=>({key:path,url:photoURL(path)}));const chosen=chooseCover(projectCovers.get(coverId('builtin',key)),list);if(chosen.selected){img.removeAttribute('srcset');if(chosen.key){img.dataset.cmsSource=chosen.key;img.src=window.AZO_CMS?.resolveAsset(chosen.url)||chosen.url}else{delete img.dataset.cmsSource;img.src=chosen.url}}else cover(img,key);}
     }
   }
 }
@@ -140,7 +142,7 @@ async function load(){
   if(window.__azoProjectVisibilityStarted)return;
   window.__azoProjectVisibilityStarted=true;
   try{
-    const [snap,visibility]=await Promise.all([getDocs(collection(db,'projectSettings')),readProjectPhotoVisibility()]);
+    const [snap,visibility,covers]=await Promise.all([getDocs(collection(db,'projectSettings')),readProjectPhotoVisibility(),readProjectCovers().catch(()=>new Map())]);projectCovers=covers;
     hiddenPhotos=visibility.hidden;
     addedPhotos=visibility.additions;
     snap.forEach(item=>{
