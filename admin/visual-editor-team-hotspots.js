@@ -21,7 +21,8 @@ function sync(a){
 function draw(a){
  if(active!==a)return;
  if(!a.button.isConnected||!a.img.isConnected||$('#ve3-frame')?.contentDocument!==a.img.ownerDocument||!$('#view-visual-v3')?.classList.contains('active')){if(!a.saving)finish(a);return}
- const g=photoGeometry(a.img);a.layer.replaceChildren();
+ const g=photoGeometry(a.img);const signature=JSON.stringify([g&&[g.left,g.top,g.width,g.height,g.clip.left,g.clip.top,g.clip.right,g.clip.bottom],a.selected,a.rows]);
+ if(signature===a.signature){a.raf=requestAnimationFrame(()=>draw(a));return}a.signature=signature;a.layer.replaceChildren();
  if(g){
   const maxW=$('#ve3-frame').clientWidth,maxH=$('#ve3-frame').clientHeight;
   for(const [i,r] of a.rows.entries()){
@@ -52,7 +53,7 @@ async function start(button,box,img){
  try{
   const page=$('#ve3-page').value;
   const snap=await getDoc(doc(db,'sitePages',page));
-  if(!button.isConnected||frame.contentDocument!==img.ownerDocument||$('#ve3-page').value!==page){box.hidden=true;return}
+  if(active||glass.hasAttribute('data-positioning')||!button.isConnected||frame.contentDocument!==img.ownerDocument||$('#ve3-page').value!==page){box.hidden=true;return}
   if(!photoGeometry(img))throw Error('Aguarde a foto carregar antes de identificar as pessoas.');
   const rows=readHotspots(snap.exists()&&Array.isArray(snap.data().items)?snap.data().items:[],img);
   const layer=document.createElement('div');layer.className='ve3-hotspot-layer';glass.append(layer);glass.setAttribute('data-hotspots','');
@@ -82,7 +83,7 @@ async function save(a){
   const after=await getDoc(ref),stored=after.exists()&&Array.isArray(after.data().items)?after.data().items:[];
   const actual=readHotspots(stored,a.img);
   if(!after.exists()||JSON.stringify(actual)!==JSON.stringify(expected)||(!expected.length&&stored.some(i=>i.key===HOTSPOT_KEY)))throw Error('Não foi possível confirmar a gravação.');
-  finish(a);$('#ve3-reload')?.click();
+  finish(a);const stack=$('#toast-stack');if(stack){const toast=document.createElement('div');toast.className='toast success';const mark=document.createElement('b');mark.textContent='✓';const msg=document.createElement('span');msg.textContent='Identificações salvas no site.';toast.append(mark,msg);stack.append(toast);setTimeout(()=>toast.remove(),3800)}
  }catch(e){message(a,e.message||'Não foi possível salvar.');a.button.textContent='Salvar identificações';a.button.disabled=false}
  finally{a.saving=false;controls.forEach(el=>el.disabled=false);if(active===a)sync(a)}
 }
