@@ -661,7 +661,7 @@ function closeProjectModalNow(){
 function askProjectExit(after){
  if($('#project-exit-dialog').open)return;
  const busy=state.projectSaving;
- $('#project-exit-message').textContent=busy?'O cadastro ainda está em andamento. Ao pausar, a imagem atual será concluída e as imagens confirmadas serão preservadas.':'Há alterações neste formulário. Se sair, alterações ainda não salvas podem ser perdidas.';
+ $('#project-exit-message').textContent=busy?'O cadastro ainda está em andamento. Ao pausar, a etapa atual será concluída. As imagens já registradas serão preservadas; os arquivos pendentes poderão ser retomados neste navegador quando o armazenamento local estiver disponível.':'Há alterações neste formulário. Se sair, alterações ainda não salvas podem ser perdidas.';
  $('#project-exit-confirm').textContent=busy?'Pausar após esta etapa':'Sair mesmo assim';
  const d=$('#project-exit-dialog');
  $('#project-exit-confirm').onclick=()=>{d.close();if(state.projectSaving){state.projectPause=true;state.projectAfterPause=after;$('#project-progress-label').textContent='Pausa solicitada. Concluindo a etapa atual…';}else{closeProjectModalNow();after?.()}};
@@ -770,7 +770,7 @@ $('#project-form').addEventListener('submit',async event=>{
  const controls=[...form.querySelectorAll('input,textarea,button,select')].filter(el=>el!==cancel).map(el=>[el,el.disabled]);
  controls.forEach(([el])=>el.disabled=true);
  state.projectSaving=true;state.projectPause=false;state.projectAfterPause=null;state.projectDirty=true;projectError();
- submit.textContent='Salvando…';cancel.textContent='Pausar envio';progress.hidden=false;projectProgress('draft');
+ submit.textContent='Salvando…';cancel.textContent='Pausar envio';progress.hidden=false;projectProgress('draft');progress.scrollIntoView({block:'nearest'});
  let uid,projectRef,localWarning=false,closeAfter=false,success=false;
  try{
   uid=await requirePhotoAdmin(state.user);projectRef=doc(db,'projects',state.projectId);
@@ -784,11 +784,12 @@ $('#project-form').addEventListener('submit',async event=>{
     localWarning=true;state.projectLocal=false;const w=$('#project-local-warning');w.hidden=false;w.textContent='O navegador não conseguiu guardar os arquivos pendentes. As fotos confirmadas no banco serão mantidas; se sair, selecione novamente as que faltam.'
    }
   };
+  let firstWrite=!existing;
   const write=async payload=>{
    // Merge uses the same admin-only table and fields already used by the project editor.
    const fields={...payload,updatedAt:serverTimestamp()};
-   if(!existing)fields.createdAt=serverTimestamp();
-   await setDoc(projectRef,fields,{merge:true});
+   if(firstWrite)fields.createdAt=serverTimestamp();
+   await setDoc(projectRef,fields,{merge:true});firstWrite=false;
   };
   const result=await registerProject({queue:state.projectImages,metadata:payloadMetadata,existing,write,read:async()=>{const snap=await getDoc(projectRef);return snap.exists()?snap.data():null},upload:uploadRegistrationImage,persist,stage:projectProgress,paused:()=>state.projectPause});
   if(result.paused){closeAfter=true;toast('Envio pausado. Continue o cadastro pela lista de projetos.');return}
@@ -818,7 +819,7 @@ async function deleteProject(projectId) {
   const project = state.projects.find(item => item.id === projectId);
   if (!project || !confirm(`Excluir o projeto “${project.title}” e suas imagens enviadas ao Storage?`)) return;
   try {
-    await deleteDoc(doc(db, 'projects', projectId));
+    if(!project.localOnly)await deleteDoc(doc(db, 'projects', projectId));
     await removeQueue(state.user?.id||state.user?.uid||'',projectId).catch(()=>{});
     for (const image of project.images || []) {
       if (image.storagePath) deleteObject(ref(storage, image.storagePath)).catch(() => {});
