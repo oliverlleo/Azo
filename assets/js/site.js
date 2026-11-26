@@ -235,7 +235,7 @@ import('./project-overrides.js?v=20261125-cover').catch(error=>{
  console.warn('[AZO] Galerias indisponíveis.',error);
 });
 // CMS is loaded only as a data layer. There is intentionally no public link to /admin/.
-import('./cms.js?v=20261125-cover').catch(error=>{
+import('./cms.js?v=20261126-resume').catch(error=>{
  console.warn('[AZO CMS] runtime indisponível; site estático mantido.',error);
  document.documentElement.dataset.cmsReady='failed';
  dispatchEvent(new CustomEvent('azo:cms-ready',{detail:{ok:false}}));

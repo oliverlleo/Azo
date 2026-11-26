@@ -1,3 +1,7 @@
+import {registerProject,completedImages} from './project-registration.mjs?v=20261126-resume';
+import {saveQueue,loadQueue,removeQueue,listQueues} from './project-registration-local.js?v=20261126-resume';
+import {prepareImageUpload} from '../assets/js/image-upload.js?v=20261126-resume';
+import {supabase,supabaseConfig} from '../assets/js/firebase-config.js';
 import {openCoverEditor,customCoverPhotos} from './project-cover-editor.js?v=20261125-cover';
 import {readProjectCovers} from '../assets/js/project-cover-store.js';
 import {coverId,chooseCover} from '../assets/js/project-cover.mjs';
@@ -58,7 +62,8 @@ const state = {
   projects: [],
   projectImages: [],
   removedProjectStorage: [],
-  projectObjectUrls: []
+  projectObjectUrls: [],
+  projectSaving:false, projectPause:false, projectDirty:false, projectId:'', projectLocal:false, projectAfterPause:null, projectPhase:'', projectOpenToken:0
 };
 
 const viewMeta = {
@@ -528,8 +533,7 @@ function uploadFile(file, storagePath, progressCallback) {
     task.on('state_changed', snapshot => {
       progressCallback?.(snapshot.bytesTransferred / snapshot.totalBytes);
     }, reject, async () => {
-      const url = await getDownloadURL(task.snapshot.ref);
-      resolve({ url, storagePath: task.snapshot.ref.fullPath, fileName: task.snapshot.fileName, contentType: task.snapshot.contentType, size: task.snapshot.size });
+      try { const url = await getDownloadURL(task.snapshot.ref);if(!url)throw Error('Endereço da imagem indisponível.');resolve({ url, storagePath: task.snapshot.ref.fullPath, fileName: task.snapshot.fileName, contentType: task.snapshot.contentType, size: task.snapshot.size }); } catch(error){reject(error)}
     });
   });
 }
@@ -589,6 +593,8 @@ async function loadProjects() {
   try {
     const [snap,covers]=await Promise.all([getDocs(collection(db, 'projects')),readProjectCovers().catch(()=>new Map())]);customCovers=covers;
     state.projects = snap.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (Number(a.order) || 9999) - (Number(b.order) || 9999));
+    const pending=await listQueues(state.user?.id||state.user?.uid||'').catch(()=>[]);
+    for(const draft of pending){if(!draft?.id||!draft.metadata)continue;const p=state.projects.find(p=>p.id===draft.id);if(p)p.pendingRegistration=true;else state.projects.push({id:draft.id,...draft.metadata,published:false,images:completedImages(draft.queue||[],draft.metadata.title),pendingRegistration:true,localOnly:true});}
     renderProjects();
   } catch (error) {
     root.innerHTML = `<div class="empty-state">${escapeHtml(error.message || 'Não foi possível carregar os projetos.')}</div>`;
@@ -605,12 +611,12 @@ function renderProjects() {
     const cover=chooseCover(customCovers.get(coverId('custom',project.id)),customCoverPhotos(project),project.coverUrl||project.images?.[0]?.url).url;
     return `<article class="project-row">
       <div class="project-thumb">${cover ? `<img src="${escapeHtml(cover)}" alt="">` : ''}</div>
-      <div class="project-meta"><h3>${escapeHtml(project.title || 'Sem título')}</h3><p>${escapeHtml(project.category || 'Projeto')} · ${project.images?.length || 0} imagem(ns)</p><div class="chips"><span class="status ${project.published === false ? 'off' : 'ok'}">${project.published === false ? 'Rascunho' : 'Publicado'}</span><span class="chip">Ordem ${Number(project.order) || 100}</span></div></div>
-      <div class="project-actions"><button class="btn btn-ghost" data-edit-project="${project.id}">Editar</button><button class="btn btn-ghost" data-cover-project="${escapeHtml(project.id)}">Editar capa</button><button class="btn btn-danger" data-delete-project="${project.id}">Excluir</button></div>
+      <div class="project-meta"><h3>${escapeHtml(project.title || 'Sem título')}</h3><p>${escapeHtml(project.category || 'Projeto')} · ${project.images?.length || 0} imagem(ns)</p><div class="chips"><span class="status ${project.published === false ? 'off' : 'ok'}">${project.published === false ? 'Rascunho' : 'Publicado'}</span><span class="chip">Ordem ${Number(project.order) || 100}</span>${project.pendingRegistration?'<span class="chip">Cadastro pendente</span>':''}</div></div>
+      <div class="project-actions"><button class="btn btn-ghost" data-edit-project="${escapeHtml(project.id)}">${project.pendingRegistration||project.published===false?'Continuar / editar':'Editar'}</button><button class="btn btn-ghost" data-cover-project="${escapeHtml(project.id)}">Editar capa</button><button class="btn btn-danger" data-delete-project="${project.id}">Excluir</button></div>
     </article>`;
   }).join('');
-  $('[data-cover-project]', root).forEach(btn=>btn.addEventListener('click',async()=>{btn.disabled=true;try{const project=state.projects.find(p=>p.id===btn.dataset.coverProject);if(!project)return;const covers=await readProjectCovers();await openCoverEditor({kind:'custom',id:project.id,title:project.title,photos:customCoverPhotos(project),setting:covers.get(coverId('custom',project.id)),fallback:project.coverUrl||project.images?.[0]?.url,onSaved:async()=>{await loadProjects();toast('Capa atualizada no portfólio.')}})}catch(e){toast(e.message||'Não foi possível abrir o editor de capa.','error')}finally{btn.disabled=false}}));
-  $('[data-edit-project]', root).forEach(button => button.addEventListener('click', () => openProjectModal(button.dataset.editProject)));
+  $$('[data-cover-project]', root).forEach(btn=>btn.addEventListener('click',async()=>{btn.disabled=true;try{const project=state.projects.find(p=>p.id===btn.dataset.coverProject);if(!project)return;const covers=await readProjectCovers();await openCoverEditor({kind:'custom',id:project.id,title:project.title,photos:customCoverPhotos(project),setting:covers.get(coverId('custom',project.id)),fallback:project.coverUrl||project.images?.[0]?.url,onSaved:async()=>{await loadProjects();toast('Capa atualizada no portfólio.')}})}catch(e){toast(e.message||'Não foi possível abrir o editor de capa.','error')}finally{btn.disabled=false}}));
+  $$('[data-edit-project]', root).forEach(button => button.addEventListener('click', () => openProjectModal(button.dataset.editProject)));
   $$('[data-delete-project]', root).forEach(button => button.addEventListener('click', () => deleteProject(button.dataset.deleteProject)));
 }
 
@@ -619,34 +625,66 @@ function cleanupObjectUrls() {
   state.projectObjectUrls = [];
 }
 
-function openProjectModal(projectId = '') {
-  cleanupObjectUrls();
-  state.removedProjectStorage = [];
-  const project = projectId ? state.projects.find(item => item.id === projectId) : null;
-  $('#project-id').value = project?.id || '';
-  $('#project-title').value = project?.title || '';
-  $('#project-category').value = project?.category || '';
-  $('#project-description').value = project?.description || '';
-  $('#project-order').value = Number(project?.order) || 100;
-  $('#project-published').checked = project?.published !== false;
-  $('#project-modal-title').textContent = project ? 'Editar projeto' : 'Novo projeto';
-  $('#project-files').value = '';
-  state.projectImages = (project?.images || []).map((image, index) => ({ ...image, id: image.id || `existing-${index}`, isNew: false }));
-  renderProjectImages();
-  $('#project-modal').hidden = false;
-  document.body.style.overflow = 'hidden';
+function projectMetadata(){
+ return {title:$('#project-title').value.trim(),category:$('#project-category').value.trim()||'Projeto · abrir galeria',description:$('#project-description').value.trim(),order:Number($('#project-order').value)||100,published:$('#project-published').checked};
 }
-
-function closeProjectModal() {
-  $('#project-modal').hidden = true;
-  document.body.style.overflow = '';
-  cleanupObjectUrls();
+function applyProjectMetadata(p){
+ $('#project-title').value=p?.title||'';$('#project-category').value=p?.category||'';$('#project-description').value=p?.description||'';
+ $('#project-order').value=Number(p?.order)||100;$('#project-published').checked=p?.published!==false;
 }
-
-$('#new-project').addEventListener('click', () => openProjectModal());
-$$('[data-close-modal]').forEach(el => el.addEventListener('click', closeProjectModal));
+function projectError(message=''){const el=$('#project-save-error');el.textContent=message;el.hidden=!message}
+async function openProjectModal(projectId=''){
+ if(state.projectSaving)return;
+ const token=++state.projectOpenToken;cleanupObjectUrls();state.removedProjectStorage=[];state.projectDirty=false;state.projectPause=false;state.projectLocal=false;
+ const project=projectId?state.projects.find(p=>p.id===projectId):null;
+ state.projectId=projectId||crypto.randomUUID();
+ $('#project-id').value=projectId||'';applyProjectMetadata(project);
+ $('#project-modal-title').textContent=project?'Editar projeto':'Novo projeto';$('#project-files').value='';
+ state.projectImages=(project?.images||[]).map((image,index)=>({...image,id:image.id||'existing-'+index,isNew:false}));
+ $('#project-progress').hidden=true;projectError();$('#project-local-warning').hidden=true;
+ const uid=state.user?.id||state.user?.uid;
+ if(projectId&&uid){
+  const draft=await loadQueue(uid,projectId).catch(()=>null);
+  if(token!==state.projectOpenToken)return;
+  if(draft?.metadata&&Array.isArray(draft.queue)){
+   applyProjectMetadata(draft.metadata);state.removedProjectStorage=draft.removed||[];
+   state.projectImages=draft.queue.map(image=>{const item={...image,isNew:!image.url};if(item.file&&!item.url){item.preview=URL.createObjectURL(item.file);state.projectObjectUrls.push(item.preview)}return item});
+   state.projectLocal=true;$('#project-modal-title').textContent='Continuar cadastro';
+   $('#project-local-warning').textContent='Cadastro recuperado. As imagens já enviadas serão reaproveitadas.';$('#project-local-warning').hidden=false;
+  }else if(project?.published===false){$('#project-local-warning').textContent='Rascunho salvo. Confira as fotos já enviadas e adicione as que faltam.';$('#project-local-warning').hidden=false}
+ }
+ renderProjectImages();$('#project-modal').hidden=false;document.body.style.overflow='hidden';
+}
+function closeProjectModalNow(){
+ state.projectOpenToken++;$('#project-modal').hidden=true;document.body.style.overflow='';state.projectDirty=false;cleanupObjectUrls();
+}
+function askProjectExit(after){
+ if($('#project-exit-dialog').open)return;
+ const busy=state.projectSaving;
+ $('#project-exit-message').textContent=busy?'O cadastro ainda está em andamento. Ao pausar, a etapa atual será concluída. As imagens já registradas serão preservadas; os arquivos pendentes poderão ser retomados neste navegador quando o armazenamento local estiver disponível.':'Há alterações neste formulário. Se sair, alterações ainda não salvas podem ser perdidas.';
+ $('#project-exit-confirm').textContent=busy?'Pausar após esta etapa':'Sair mesmo assim';
+ const d=$('#project-exit-dialog');
+ $('#project-exit-confirm').onclick=()=>{d.close();if(state.projectSaving){state.projectPause=true;state.projectAfterPause=after;$('#project-progress-label').textContent='Pausa solicitada. Concluindo a etapa atual…';}else{closeProjectModalNow();after?.()}};
+ d.showModal();
+}
+function requestProjectExit(after){
+ if(state.projectSaving||state.projectDirty){askProjectExit(after);return}
+ closeProjectModalNow();after?.();
+}
+$('#project-exit-stay').addEventListener('click',()=>$('#project-exit-dialog').close());
+$('#new-project').addEventListener('click',()=>openProjectModal());
+$$('[data-close-modal]').forEach(el=>el.addEventListener('click',()=>requestProjectExit()));
+$('#project-form').addEventListener('input',()=>{if(!state.projectSaving)state.projectDirty=true});
+window.addEventListener('beforeunload',event=>{if(state.projectSaving||(!$('#project-modal').hidden&&state.projectDirty)){event.preventDefault();event.returnValue=''}});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('#project-modal').hidden&&!$('#project-exit-dialog').open){event.preventDefault();requestProjectExit()}});
+document.addEventListener('click',event=>{
+ const target=event.target.closest?.('.nav-item,[data-go],#logout-button');
+ if(!target||$('#project-modal').hidden||(!state.projectSaving&&!state.projectDirty))return;
+ event.preventDefault();event.stopImmediatePropagation();requestProjectExit(()=>target.click());
+},true);
 
 function addProjectFiles(files) {
+  if(state.projectSaving)return;
   for (const file of files) {
     if (!file.type.startsWith('image/')) continue;
     if (file.size > 30 * 1024 * 1024) {
@@ -655,7 +693,8 @@ function addProjectFiles(files) {
     }
     const preview = URL.createObjectURL(file);
     state.projectObjectUrls.push(preview);
-    state.projectImages.push({ id: `new-${crypto.randomUUID()}`, file, preview, isNew: true, alt: '' });
+    state.projectImages.push({ id: crypto.randomUUID(), file, preview, isNew: true, alt: '' });
+    state.projectDirty=true;
   }
   renderProjectImages();
 }
@@ -681,86 +720,107 @@ function renderProjectImages() {
     const index = Number(button.dataset.index);
     const target = button.dataset.moveImage === 'up' ? index - 1 : index + 1;
     if (target < 0 || target >= state.projectImages.length) return;
+    if(state.projectSaving)return;state.projectDirty=true;
     [state.projectImages[index], state.projectImages[target]] = [state.projectImages[target], state.projectImages[index]];
     renderProjectImages();
   }));
   $$('[data-remove-image]', root).forEach(button => button.addEventListener('click', () => {
     const index = Number(button.dataset.removeImage);
+    if(state.projectSaving)return;state.projectDirty=true;
     const [removed] = state.projectImages.splice(index, 1);
     if (removed?.storagePath && !removed.isNew) state.removedProjectStorage.push(removed.storagePath);
     renderProjectImages();
   }));
 }
 
-$('#project-form').addEventListener('submit', async event => {
-  event.preventDefault();
-  const title = $('#project-title').value.trim();
-  if (!title) return toast('Informe o título do projeto.', 'error');
-  if (!state.projectImages.length) return toast('Adicione pelo menos uma imagem ao projeto.', 'error');
-  const existingId = $('#project-id').value;
-  const projectRef = existingId ? doc(db, 'projects', existingId) : doc(collection(db, 'projects'));
-  const projectId = projectRef.id;
-  const progress = $('#project-progress');
-  const progressBar = $('#project-progress-bar');
-  const progressLabel = progress.querySelector('span');
-  progress.hidden = false;
-  progressBar.style.width = '0%';
-  const submit = event.currentTarget.querySelector('button[type="submit"]');
-  submit.disabled = true;
-  submit.textContent = 'Salvando...';
-  try {
-    let completed = 0;
-    const totalNew = state.projectImages.filter(image => image.isNew).length;
-    const images = [];
-    for (let index = 0; index < state.projectImages.length; index++) {
-      const image = state.projectImages[index];
-      if (!image.isNew) {
-        images.push({ id: image.id || `img-${index}`, url: image.url, storagePath: image.storagePath || '', alt: image.alt || `${title} — imagem ${index + 1}`, order: index });
-        continue;
-      }
-      progressLabel.textContent = `Enviando ${completed + 1} de ${totalNew} imagem(ns)...`;
-      const storagePath = `site/projects/${projectId}/${Date.now()}-${index}-${safeStorageSegment(image.file.name)}`;
-      const uploaded = await uploadFile(image.file, storagePath, fraction => {
-        const overall = totalNew ? ((completed + fraction) / totalNew) * 100 : 100;
-        progressBar.style.width = `${Math.min(100, overall)}%`;
-      });
-      completed++;
-      images.push({ id: crypto.randomUUID(), url: uploaded.url, storagePath: uploaded.storagePath, alt: `${title} — imagem ${index + 1}`, order: index });
-    }
-    const payload = {
-      title,
-      category: $('#project-category').value.trim() || 'Projeto · abrir galeria',
-      description: $('#project-description').value.trim(),
-      order: Number($('#project-order').value) || 100,
-      published: $('#project-published').checked,
-      images,
-      coverUrl: images[0]?.url || '',
-      coverAlt: images[0]?.alt || title,
-      updatedAt: serverTimestamp(),
-      updatedBy: state.user.uid
-    };
-    if (!existingId) payload.createdAt = serverTimestamp();
-    await setDoc(projectRef, payload, { merge: true });
-    for (const storagePath of state.removedProjectStorage) deleteObject(ref(storage, storagePath)).catch(() => {});
-    progressBar.style.width = '100%';
-    toast(existingId ? 'Projeto atualizado.' : 'Projeto criado e pronto para o site.');
-    closeProjectModal();
-    await loadProjects();
-    loadDashboard();
-  } catch (error) {
-    toast(error.message || 'Não foi possível salvar o projeto.', 'error');
-  } finally {
-    submit.disabled = false;
-    submit.textContent = 'Salvar projeto';
-    progress.hidden = true;
-  }
+function projectProgress(stage,index=-1){
+ state.projectPhase=stage;
+ const queue=state.projectImages,done=queue.filter(i=>i.url).length,total=queue.length;
+ const messages={draft:'Registrando rascunho no banco…',optimize:'Otimizando imagem sem perda de qualidade…',upload:'Enviando imagem ao armazenamento…',checkpoint:'Confirmando imagem salva…',complete:'Imagem enviada e registrada.',final:'Confirmando o projeto completo no banco…'};
+ $('#project-progress-label').textContent=state.projectPause?'Pausa solicitada. Concluindo a etapa atual…':(messages[stage]||stage)+(index>=0?' ('+(index+1)+' de '+total+')':'');
+ // Only confirmed upload counts are shown; no fabricated byte percentages.
+ $('#project-progress-bar').style.width=(total?Math.round(done/total*95):0)+'%';
+ $('#project-progress-count').textContent=done+' de '+total+' imagens enviadas';
+ const list=$('#project-progress-list');list.replaceChildren();
+ for(const [i,image] of queue.entries()){
+  const row=document.createElement('li'),mark=document.createElement('span'),name=document.createElement('span');
+  let status=image.url?'Enviada':'Aguardando';
+  if(i===index&&stage!=='complete')status={optimize:'Otimizando',upload:'Enviando',checkpoint:'Confirmando'}[stage]||status;
+  mark.className='project-progress-dot '+(status==='Enviada'?'done':i===index?'working':'');mark.textContent=status==='Enviada'?'✓':i===index?'…':'○';
+  name.textContent=(image.file?.name||image.alt||'Imagem '+(i+1))+' — '+status;row.append(mark,name);list.append(row)
+ }
+}
+async function uploadRegistrationImage(image,index,stage){
+ const file=image.file,base='site/projects/'+state.projectId+'/'+safeStorageSegment(image.id)+'-'+safeStorageSegment(file.name);
+ const prepared=await prepareImageUpload(file,base,{timeoutMs:15000});
+ stage('upload');
+ const bucket=supabase.storage.from(supabaseConfig.bucket);
+ const {error}=await bucket.upload(prepared.path,prepared.file,{upsert:true,contentType:prepared.file.type||file.type,cacheControl:'31536000'});
+ if(error)throw error;
+ const url=bucket.getPublicUrl(prepared.path).data.publicUrl;
+ if(!url)throw Error('Endereço da imagem não retornado.');
+ return {url,storagePath:prepared.path};
+}
+$('#project-form').addEventListener('submit',async event=>{
+ event.preventDefault();if(state.projectSaving)return;
+ const metadata=projectMetadata();
+ if(!metadata.title)return toast('Informe o título do projeto.','error');
+ if(!state.projectImages.length)return toast('Adicione pelo menos uma imagem ao projeto.','error');
+ const form=event.currentTarget,submit=form.querySelector('[type=submit]'),cancel=form.querySelector('[data-close-modal]'),progress=$('#project-progress');
+ const controls=[...form.querySelectorAll('input,textarea,button,select')].filter(el=>el!==cancel).map(el=>[el,el.disabled]);
+ controls.forEach(([el])=>el.disabled=true);
+ state.projectSaving=true;state.projectPause=false;state.projectAfterPause=null;state.projectDirty=true;projectError();
+ submit.textContent='Salvando…';cancel.textContent='Pausar envio';progress.hidden=false;projectProgress('draft');progress.scrollIntoView({block:'nearest'});
+ let uid,projectRef,localWarning=false,closeAfter=false,success=false;
+ try{
+  uid=await requirePhotoAdmin(state.user);projectRef=doc(db,'projects',state.projectId);
+  const previous=await getDoc(projectRef),existing=previous.exists()?previous.data():null;
+  const payloadMetadata={...metadata,updatedBy:uid};
+  const persist=async()=>{
+   try{
+    const queue=state.projectImages.map(({preview,...image})=>{if(image.url){const {file,...saved}=image;return saved}return image});
+    await saveQueue(uid,state.projectId,{id:state.projectId,metadata,queue,removed:state.removedProjectStorage});state.projectLocal=true;
+   }catch(error){
+    localWarning=true;state.projectLocal=false;const w=$('#project-local-warning');w.hidden=false;w.textContent='O navegador não conseguiu guardar os arquivos pendentes. As fotos confirmadas no banco serão mantidas; se sair, selecione novamente as que faltam.'
+   }
+  };
+  let firstWrite=!existing;
+  const write=async payload=>{
+   // Merge uses the same admin-only table and fields already used by the project editor.
+   const fields={...payload,updatedAt:serverTimestamp()};
+   if(firstWrite)fields.createdAt=serverTimestamp();
+   await setDoc(projectRef,fields,{merge:true});firstWrite=false;
+  };
+  const result=await registerProject({queue:state.projectImages,metadata:payloadMetadata,existing,write,read:async()=>{const snap=await getDoc(projectRef);return snap.exists()?snap.data():null},upload:uploadRegistrationImage,persist,stage:projectProgress,paused:()=>state.projectPause});
+  if(result.paused){closeAfter=true;toast('Envio pausado. Continue o cadastro pela lista de projetos.');return}
+  const saved=result.saved;
+  try{await removeQueue(uid,state.projectId)}catch{ /* A confirmed project remains valid even if local cleanup fails. */ }
+  const kept=new Set(saved.images.map(i=>i.storagePath));
+  for(const path of state.removedProjectStorage)if(!kept.has(path))deleteObject(ref(storage,path)).catch(()=>{});
+  $('#project-progress-bar').style.width='100%';$('#project-progress-label').textContent='Projeto confirmado no banco.';$('#project-progress-count').textContent=saved.images.length+' de '+saved.images.length+' imagens enviadas';
+  state.projectDirty=false;success=true;closeAfter=true;
+  state.projects=[...state.projects.filter(p=>p.id!==state.projectId),{...saved,id:state.projectId}].sort((a,b)=>(Number(a.order)||9999)-(Number(b.order)||9999));
+  renderProjects();
+  toast(saved.published?'Projeto salvo e confirmado no banco.':'Rascunho salvo e confirmado.');
+ }catch(error){
+  const message=error?.message||'Não foi possível salvar o projeto.';
+  projectError(message+(localWarning?' Reabra o projeto e selecione as imagens faltantes se necessário.':' As imagens já confirmadas serão reaproveitadas ao tentar novamente.'));
+  $('#project-progress-label').textContent='Cadastro interrompido. Confira o erro abaixo.';toast(message,'error',9000);
+  if(state.projectPause)closeAfter=true;
+ }finally{
+  const next=state.projectAfterPause;state.projectSaving=false;state.projectPause=false;state.projectAfterPause=null;
+  controls.forEach(([el,disabled])=>el.disabled=disabled);submit.textContent='Salvar projeto';cancel.textContent='Cancelar';renderProjectImages();
+  if(closeAfter){closeProjectModalNow();await loadProjects();loadDashboard();next?.()}
+  else if(!success){submit.textContent='Tentar novamente'}
+ }
 });
 
 async function deleteProject(projectId) {
   const project = state.projects.find(item => item.id === projectId);
   if (!project || !confirm(`Excluir o projeto “${project.title}” e suas imagens enviadas ao Storage?`)) return;
   try {
-    await deleteDoc(doc(db, 'projects', projectId));
+    if(!project.localOnly)await deleteDoc(doc(db, 'projects', projectId));
+    await removeQueue(state.user?.id||state.user?.uid||'',projectId).catch(()=>{});
     for (const image of project.images || []) {
       if (image.storagePath) deleteObject(ref(storage, image.storagePath)).catch(() => {});
     }
