@@ -58,7 +58,9 @@ const state = {
   projects: [],
   projectImages: [],
   removedProjectStorage: [],
-  projectObjectUrls: []
+  projectObjectUrls: [],
+  projectSaving: false,
+  projectDraftId: ''
 };
 
 const viewMeta = {
@@ -528,8 +530,11 @@ function uploadFile(file, storagePath, progressCallback) {
     task.on('state_changed', snapshot => {
       progressCallback?.(snapshot.bytesTransferred / snapshot.totalBytes);
     }, reject, async () => {
-      const url = await getDownloadURL(task.snapshot.ref);
-      resolve({ url, storagePath: task.snapshot.ref.fullPath, fileName: task.snapshot.fileName, contentType: task.snapshot.contentType, size: task.snapshot.size });
+      try {
+        const url = await getDownloadURL(task.snapshot.ref);
+        if (!url) throw new Error('O arquivo foi enviado, mas o endereço da imagem não foi retornado.');
+        resolve({ url, storagePath: task.snapshot.ref.fullPath, fileName: task.snapshot.fileName, contentType: task.snapshot.contentType, size: task.snapshot.size });
+      } catch (error) { reject(error); }
     });
   });
 }
@@ -620,7 +625,11 @@ function cleanupObjectUrls() {
 }
 
 function openProjectModal(projectId = '') {
+  if (state.projectSaving) return;
   cleanupObjectUrls();
+  state.projectDraftId = '';
+  const error = $('#project-save-error');
+  if(error){error.hidden=true;error.textContent='';}
   state.removedProjectStorage = [];
   const project = projectId ? state.projects.find(item => item.id === projectId) : null;
   $('#project-id').value = project?.id || '';
@@ -637,7 +646,8 @@ function openProjectModal(projectId = '') {
   document.body.style.overflow = 'hidden';
 }
 
-function closeProjectModal() {
+function closeProjectModal(force = false) {
+  if (state.projectSaving && force !== true) return;
   $('#project-modal').hidden = true;
   document.body.style.overflow = '';
   cleanupObjectUrls();
@@ -647,6 +657,7 @@ $('#new-project').addEventListener('click', () => openProjectModal());
 $$('[data-close-modal]').forEach(el => el.addEventListener('click', closeProjectModal));
 
 function addProjectFiles(files) {
+  if(state.projectSaving)return;
   for (const file of files) {
     if (!file.type.startsWith('image/')) continue;
     if (file.size > 30 * 1024 * 1024) {
@@ -694,21 +705,29 @@ function renderProjectImages() {
 
 $('#project-form').addEventListener('submit', async event => {
   event.preventDefault();
+  if (state.projectSaving) return;
   const title = $('#project-title').value.trim();
   if (!title) return toast('Informe o título do projeto.', 'error');
   if (!state.projectImages.length) return toast('Adicione pelo menos uma imagem ao projeto.', 'error');
   const existingId = $('#project-id').value;
-  const projectRef = existingId ? doc(db, 'projects', existingId) : doc(collection(db, 'projects'));
+  const projectRef = doc(db, 'projects', existingId || state.projectDraftId || crypto.randomUUID());
   const projectId = projectRef.id;
+  state.projectDraftId = projectId;
   const progress = $('#project-progress');
   const progressBar = $('#project-progress-bar');
   const progressLabel = progress.querySelector('span');
   progress.hidden = false;
   progressBar.style.width = '0%';
   const submit = event.currentTarget.querySelector('button[type="submit"]');
+  state.projectSaving = true;
+  const controls=[...event.currentTarget.querySelectorAll('input,textarea,button,select')].map(el=>[el,el.disabled]);
+  controls.forEach(([el])=>el.disabled=true);
+  const errorEl=$('#project-save-error');
+  if(errorEl){errorEl.hidden=true;errorEl.textContent='';}
   submit.disabled = true;
   submit.textContent = 'Salvando...';
   try {
+    const uid=await requirePhotoAdmin(state.user);
     let completed = 0;
     const totalNew = state.projectImages.filter(image => image.isNew).length;
     const images = [];
@@ -720,12 +739,14 @@ $('#project-form').addEventListener('submit', async event => {
       }
       progressLabel.textContent = `Enviando ${completed + 1} de ${totalNew} imagem(ns)...`;
       const storagePath = `site/projects/${projectId}/${Date.now()}-${index}-${safeStorageSegment(image.file.name)}`;
-      const uploaded = await uploadFile(image.file, storagePath, fraction => {
+      const uploaded = image.uploaded || await uploadFile(image.file, storagePath, fraction => {
         const overall = totalNew ? ((completed + fraction) / totalNew) * 100 : 100;
         progressBar.style.width = `${Math.min(100, overall)}%`;
       });
+      image.uploaded=uploaded;
+      image.persistedId ||= crypto.randomUUID();
       completed++;
-      images.push({ id: crypto.randomUUID(), url: uploaded.url, storagePath: uploaded.storagePath, alt: `${title} — imagem ${index + 1}`, order: index });
+      images.push({ id: image.persistedId, url: uploaded.url, storagePath: uploaded.storagePath, alt: `${title} — imagem ${index + 1}`, order: index });
     }
     const payload = {
       title,
@@ -737,19 +758,29 @@ $('#project-form').addEventListener('submit', async event => {
       coverUrl: images[0]?.url || '',
       coverAlt: images[0]?.alt || title,
       updatedAt: serverTimestamp(),
-      updatedBy: state.user.uid
+      updatedBy: uid
     };
     if (!existingId) payload.createdAt = serverTimestamp();
+    progressLabel.textContent = 'Gravando e confirmando projeto no banco de dados…';
     await setDoc(projectRef, payload, { merge: true });
+    const confirmed=await getDoc(projectRef);
+    const saved=confirmed.exists()?confirmed.data():null;
+    if(!saved || saved.title!==title || saved.published!==payload.published || !Array.isArray(saved.images) || saved.images.length!==images.length || images.some((image,i)=>saved.images[i]?.url!==image.url)) throw new Error('Não foi possível confirmar o projeto no banco. Os arquivos enviados serão reaproveitados ao tentar novamente.');
     for (const storagePath of state.removedProjectStorage) deleteObject(ref(storage, storagePath)).catch(() => {});
     progressBar.style.width = '100%';
-    toast(existingId ? 'Projeto atualizado.' : 'Projeto criado e pronto para o site.');
-    closeProjectModal();
-    await loadProjects();
+    // The confirmed row can be displayed immediately even if refreshing the collection fails.
+    state.projects=[...state.projects.filter(p=>p.id!==projectId),{...saved,id:projectId}].sort((a,b)=>(Number(a.order)||9999)-(Number(b.order)||9999));
+    renderProjects();
+    closeProjectModal(true);
+    toast(existingId ? 'Projeto atualizado.' : payload.published ? 'Projeto criado e confirmado no banco.' : 'Projeto salvo como rascunho.');
     loadDashboard();
   } catch (error) {
-    toast(error.message || 'Não foi possível salvar o projeto.', 'error');
+    const message=error.message || 'Não foi possível salvar o projeto.';
+    if(errorEl){errorEl.textContent=message;errorEl.hidden=false;}
+    toast(message, 'error', 9000);
   } finally {
+    state.projectSaving=false;
+    controls.forEach(([el,disabled])=>el.disabled=disabled);
     submit.disabled = false;
     submit.textContent = 'Salvar projeto';
     progress.hidden = true;
