@@ -14,7 +14,7 @@
       "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js": "./supabase-auth-shim.js",
       "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js": "./supabase-firestore-shim.js",
       "https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js": "./supabase-storage-shim.js",
-      "../assets/js/firebase-config.js": "../assets/js/firebase-config.js?v=20261124-photos"
+      "../assets/js/firebase-config.js": "../assets/js/firebase-config.js?v=20261126-project-fix"
     }
   }
   </script>
@@ -123,6 +123,7 @@
         <div class="upload-zone" id="project-upload-zone"><input id="project-files" type="file" accept="image/*" multiple><div><b>＋</b><strong>Adicionar imagens</strong><small>Arraste ou escolha várias imagens. A primeira será a capa.</small></div></div>
         <div class="project-images" id="project-images"></div>
         <div class="upload-progress" id="project-progress" hidden><span></span><div><i id="project-progress-bar"></i></div></div>
+        <p id="project-save-error" role="alert" style="color:var(--danger);font-size:.8rem;line-height:1.5" hidden></p>
         <footer><button class="btn btn-ghost" type="button" data-close-modal>Cancelar</button><button class="btn btn-primary" type="submit">Salvar projeto</button></footer>
       </form>
     </section>
@@ -131,7 +132,7 @@
   <input type="file" id="asset-file-input" accept="image/*" hidden>
   <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
   <script type="module" src="friendly-ui.js?v=20261124-photos"></script>
-  <script type="module" src="admin.js?v=20261125-cover"></script>
+  <script type="module" src="admin.js?v=20261126-project-fix"></script>
   <script type="module" src="existing-projects.js?v=20261125-cover"></script>
   <script type="module" src="visual-editor.js?v=20261125-team"></script>
 </body>
