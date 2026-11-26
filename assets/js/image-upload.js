@@ -33,7 +33,7 @@ async function requiresOriginal(file) {
 export function webpPath(path) {
   return /\.[^/.]+$/.test(path) ? path.replace(/\.[^/.]+$/,'.webp') : `${path}.webp`;
 }
-export async function prepareImageUpload(file,path) {
+export async function prepareImageUpload(file,path,{timeoutMs=120000}={}) {
   const original={file,path,converted:false};
   if (!['image/jpeg','image/png'].includes(file.type)) return original;
   if (typeof Worker==='undefined' || typeof createImageBitmap==='undefined' || typeof OffscreenCanvas==='undefined') return original;
@@ -42,7 +42,7 @@ export async function prepareImageUpload(file,path) {
     const result=await new Promise(resolve=>{
       const worker=new Worker(new URL('./image-webp-worker.js',import.meta.url),{type:'module'});
       const finish=value=>{clearTimeout(timer);worker.terminate();resolve(value);};
-      const timer=setTimeout(()=>finish(null),120000);
+      const timer=setTimeout(()=>finish(null),timeoutMs);
       worker.onmessage=event=>finish(event.data);
       worker.onerror=()=>finish(null);
       worker.postMessage({file});
