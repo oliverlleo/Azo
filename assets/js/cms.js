@@ -179,11 +179,10 @@ function moveProject(delta) {
 }
 
 async function loadProjects() {
-  if (pageId !== 'projetos' || gateTimedOut) return;
+  if (pageId !== 'projetos') return;
   const grid = document.querySelector('.projects-grid');
   if (!grid) return;
   const [snap,covers]=await Promise.all([getDocs(collection(db, 'projects')),readProjectCovers().catch(()=>new Map())]);
-  if (gateTimedOut) return;
   const projects = snap.docs.map(item => ({ id: item.id, ...item.data() }))
     .filter(project => project.published !== false)
     .sort((a,b) => (Number(a.order) || 9999) - (Number(b.order) || 9999));
@@ -236,10 +235,9 @@ window.AZO_CMS = { assetMap, resolveAsset, canonicalAsset,
 (async () => {
   try {
     watchImages();
-    await Promise.all([loadAssets(), loadPage()]);
+    // Start project reads independently; the first-paint timeout must never discard published projects.
+    await Promise.all([loadAssets(), loadPage(), loadProjects()]);
     renderTeamHotspots(document,teamItems);
-    if (gateTimedOut) return;
-    await loadProjects();
     if (gateTimedOut) return;
     signalReady(true);
   } catch (error) {
