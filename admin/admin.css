@@ -4,3 +4,25 @@
 .asset-actions{flex-wrap:wrap}.asset-actions [data-delete-photo],.asset-actions [data-show-photo]{flex-basis:100%}.asset-visibility-status{color:var(--danger);font-size:.72rem;font-weight:800;padding:0 14px 10px}.asset-hidden .asset-preview img{opacity:.5}.photo-delete-dialog{width:min(460px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;border:1px solid var(--line);border-radius:24px;padding:26px;background:var(--card);color:var(--ink);box-shadow:0 24px 80px rgba(6,31,35,.25)}.photo-delete-dialog::backdrop{background:rgba(6,31,35,.65)}.photo-delete-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.photo-delete-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;background:#fff0ef;color:var(--danger)}.photo-delete-icon svg{width:24px;height:24px}.photo-delete-dialog h2{font-family:Georgia,serif;font-weight:400;font-size:2rem;letter-spacing:-.035em;margin:0 0 18px}.photo-delete-preview{display:flex;align-items:center;gap:14px;background:white;border:1px solid var(--line);padding:10px;border-radius:15px}.photo-delete-preview img{width:90px;height:68px;border-radius:10px;object-fit:cover}.photo-delete-preview strong,.photo-delete-preview small{display:block}.photo-delete-preview small{color:var(--muted);margin-top:4px}.photo-delete-dialog p:not(.eyebrow){font-size:.9rem;line-height:1.6;color:var(--muted)}.photo-delete-dialog .photo-delete-error{color:var(--danger)!important}.photo-delete-dialog footer{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-top:22px}.photo-delete-confirm{background:var(--danger);border-color:var(--danger);color:#fff}.photo-delete-dialog button:disabled{opacity:.65;cursor:wait}.photo-delete-dialog button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 
 #photo-add-dialog form{display:grid;gap:14px}#photo-add-dialog label{display:grid;gap:8px;font-size:.78rem;font-weight:800}#photo-add-dialog input,#photo-add-dialog select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}#photo-add-dialog footer{margin-top:4px}#photo-add-dialog .photo-add-progress{margin:0}
+
+.project-toolbar,.project-toolbar .btn{align-items:center}
+.project-order-dialog{width:min(580px,calc(100% - 24px));max-height:92dvh;padding:clamp(16px,3.5vw,26px);border:1px solid var(--line);border-radius:24px;background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.project-order-dialog::backdrop{background:#071b1f99}
+.project-order-dialog h2{font:400 2rem Georgia,serif;letter-spacing:-.035em;margin:0 0 16px}
+.project-order-category{display:grid;gap:6px;max-width:230px;font-size:.78rem;font-weight:800}
+.project-order-category select{padding:9px 12px;border:1px solid var(--line);border-radius:12px;color:var(--ink);background:white}
+.project-order-dialog p{font-size:.79rem;line-height:1.5;color:var(--muted);margin:12px 0 8px}
+.project-order-dialog [data-order-status]:empty{display:none}
+.project-order-dialog [data-order-error]{color:var(--danger)}
+.project-order-list{counter-reset:position;list-style:none;display:grid;gap:7px;max-height:min(50dvh,420px);overflow:auto;padding:2px 4px 2px 0;margin:0}
+.project-order-list li{counter-increment:position;display:grid;grid-template-columns:32px clamp(38px,11vw,58px) minmax(0,1fr) auto;align-items:center;gap:clamp(5px,2vw,11px);padding:8px;border:1px solid var(--line);border-radius:13px;background:white}
+.project-order-list li[draggable=true]{cursor:grab}
+.project-order-list li::before{content:counter(position) 'º';display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--paper);font-weight:800;font-size:.76rem}
+.project-order-list img{display:block;width:100%;aspect-ratio:1.45;object-fit:cover;border-radius:7px;background:var(--paper)}
+.project-order-list strong,.project-order-list small{display:block;overflow-wrap:anywhere}
+.project-order-list strong{font-size:.87rem}
+.project-order-list small{margin-top:2px;color:var(--muted);font-size:.72rem}
+.project-order-actions{display:flex;gap:4px}
+.project-order-actions button{width:32px;height:32px}
+.project-order-dialog :is(.btn,.icon-button):disabled{opacity:.45;cursor:default;transform:none}
+.project-order-dialog footer{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}

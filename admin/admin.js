@@ -2,7 +2,7 @@ import {registerProject,completedImages} from './project-registration.mjs?v=2026
 import {saveQueue,loadQueue,removeQueue,listQueues} from './project-registration-local.js?v=20261126-resume';
 import {prepareImageUpload} from '../assets/js/image-upload.js?v=20261126-resume';
 import {supabase,supabaseConfig} from '../assets/js/firebase-config.js';
-import {openCoverEditor,customCoverPhotos} from './project-cover-editor.js?v=20261127-portfolio';
+import {openCoverEditor,customCoverPhotos} from './project-cover-editor.js?v=20261127-order';
 import {readProjectPresentation} from '../assets/js/project-cover-store.js';
 import {coverId,chooseCover,portfolioDetails} from '../assets/js/project-cover.mjs';
 let customCovers=new Map();
@@ -614,7 +614,7 @@ function renderProjects() {
     const portfolioLabel=placement.section==='interiores'?'Interiores':'Exteriores';
     return `<article class="project-row">
       <div class="project-thumb">${cover ? `<img src="${escapeHtml(cover)}" alt="">` : ''}</div>
-      <div class="project-meta"><h3>${escapeHtml(project.title || 'Sem título')}</h3><p>${escapeHtml(project.category || 'Projeto')} · ${project.images?.length || 0} imagem(ns)</p><div class="chips"><span class="status ${project.published === false ? 'off' : 'ok'}">${project.published === false ? 'Rascunho' : 'Publicado'}</span><span class="chip">${portfolioLabel} · ordem ${placement.order}</span>${project.pendingRegistration?'<span class="chip">Cadastro pendente</span>':''}</div></div>
+      <div class="project-meta"><h3>${escapeHtml(project.title || 'Sem título')}</h3><p>${escapeHtml(project.category || 'Projeto')} · ${project.images?.length || 0} imagem(ns)</p><div class="chips"><span class="status ${project.published === false ? 'off' : 'ok'}">${project.published === false ? 'Rascunho' : 'Publicado'}</span><span class="chip">${portfolioLabel}</span>${project.pendingRegistration?'<span class="chip">Cadastro pendente</span>':''}</div></div>
       <div class="project-actions"><button class="btn btn-ghost" data-edit-project="${escapeHtml(project.id)}">${project.pendingRegistration||project.published===false?'Continuar / editar':'Editar'}</button>${project.localOnly?'':`<button class="btn btn-ghost" data-cover-project="${escapeHtml(project.id)}">Editar portfólio e capa</button>`}<button class="btn btn-danger" data-delete-project="${escapeHtml(project.id)}">Excluir</button></div>
     </article>`;
   }).join('');

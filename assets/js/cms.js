@@ -1,6 +1,7 @@
 import {readProjectPresentation} from './project-cover-store.js';
 import {coverId,chooseCover,portfolioDetails} from './project-cover.mjs';
 import {setPortfolioProjects} from './project-portfolio.js';
+import {readPortfolioOrders} from './project-order-store.js';
 import {renderTeamHotspots,isTeamPhoto,TEAM_SELECTOR} from './team-hotspots.mjs?v=20261125-team';
 import { db, collection, doc, getDoc, getDocs } from './firebase-config.js';
 import { normalizePageId, applyPageOverrides, normalizeAssetPath } from './cms-core.js';
@@ -196,13 +197,18 @@ function moveProject(delta) {
 async function loadProjects() {
   if (pageId !== 'projetos') return;
   if (!document.querySelector('.project-portfolio')) return;
-  const [snap,settings]=await Promise.all([getDocs(collection(db, 'projects')),readProjectPresentation().catch(()=>new Map())]);
+  const [snap,settings,orders]=await Promise.all([
+    getDocs(collection(db,'projects')),
+    readProjectPresentation().catch(()=>new Map()),
+    readPortfolioOrders().catch(()=>null)
+  ]);
   const projects = snap.docs.map(item => ({ id: item.id, ...item.data() }))
     .filter(project => project.published !== false);
   const cards=[];
   for (const project of projects) {
     if (!project?.title || !project?.images?.length) continue;
-    const setting=settings.get(coverId('custom',project.id));
+    const id=coverId('custom',project.id);
+    const setting=settings.get(id);
     const details=portfolioDetails(setting,project.order);
     const cover=chooseCover(setting?.cover,project.images.filter(i=>i?.url).map(i=>({key:i.url,url:i.url})),project.coverUrl||project.images[0]?.url).url;
     if (!cover) continue;
@@ -219,9 +225,9 @@ async function loadProjects() {
     card.querySelector('.portfolio-card__text div span').textContent = project.category || 'Projeto';
     card.addEventListener('click', () => openProject(project,card));
     card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProject(project,card); } });
-    cards.push({id:project.id,card,...details});
+    cards.push({id,card,title:project.title,...details});
   }
-  setPortfolioProjects('custom',cards);
+  setPortfolioProjects('custom',cards,orders);
 }
 
 addEventListener('keydown', event => {

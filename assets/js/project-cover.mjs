@@ -2,7 +2,25 @@ import {validPosition} from './image-position.mjs';
 
 // Independent portfolio records preserve gallery order and project data.
 export const COVER_PREFIX='azo-project-cover-';
-export const COVER_RATIOS={featured:1.9,wide:3.7,carousel:1.45};
+export const COVER_RATIOS={featured:1.9,wide:2.65,carousel:1.45};
+export const PORTFOLIO_SECTIONS=['exteriores','interiores'];
+export const BUILTIN_PROJECTS=[
+ {key:'AS',title:'Casa AS',category:'Arquitetura residencial',order:10},
+ {key:'HL',title:'Casa HL',category:'Arquitetura residencial',order:20},
+ {key:'JT',title:'Casa JT',category:'Projeto residencial',order:30},
+ {key:'MN',title:'Casa MN',category:'Arquitetura + construção',order:40},
+ {key:'SE',title:'Casa SE',category:'Projeto residencial',order:50},
+ {key:'EF',title:'Casa EF',category:'Interiores + área de lazer',order:60}
+];
+
+export function sortPortfolioProjects(projects,order=[]){
+ const positions=new Map(order.map((id,index)=>[id,index]));
+ return [...projects].sort((a,b)=>{
+  const priorityA=positions.get(a.id)??order.length;
+  const priorityB=positions.get(b.id)??order.length;
+  return priorityA-priorityB||a.order-b.order||a.title.localeCompare(b.title,'pt-BR')||a.id.localeCompare(b.id);
+ });
+}
 export function coverId(kind,id){
  if(!['builtin','custom'].includes(kind)||typeof id!=='string'||!/^[a-zA-Z0-9_-]{1,100}$/.test(id))throw Error('Projeto inválido.');
  return COVER_PREFIX+kind+'-'+id;

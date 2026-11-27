@@ -38,6 +38,7 @@ style.textContent=`
  @media(max-width:500px){.azo-cover-dialog{padding:16px}.azo-cover-dialog footer{bottom:-16px}.azo-cover-dialog footer .btn{flex:1;min-height:40px}}
  .azo-cover-fields label{display:grid;gap:6px;font-size:.78rem;font-weight:800}
  .azo-cover-fields input,.azo-cover-fields select{width:100%;border:1px solid var(--line);border-radius:12px;background:white;color:var(--ink);padding:10px}
+ .azo-cover-category{max-width:300px}
  .azo-cover-crop{background:var(--paper);border-radius:16px;padding:14px;margin:14px 0}
  .azo-cover-crop .azo-cover-fields{max-width:310px;margin-bottom:12px}
  .azo-cover-frame{width:min(100%,480px);margin-inline:auto;overflow:hidden;border-radius:12px;background:var(--ink);touch-action:none;cursor:grab}
@@ -58,11 +59,9 @@ export async function openCoverEditor({kind,id,title,photos,setting,fallback,ord
   <form>
    <p class="eyebrow">Portfólio e capa</p>
    <h2 id="azo-cover-title"></h2>
-   <div class="form-grid azo-cover-fields">
+   <div class="azo-cover-fields azo-cover-category">
     <label>Categoria do portfólio<select name="section"><option value="exteriores">Exteriores</option><option value="interiores">Interiores</option></select></label>
-    <label>Ordem na categoria<input name="order" type="number" min="0" max="2147483647" step="1" required></label>
    </div>
-   <p>Os menores números aparecem primeiro. Os dois primeiros projetos ficam lado a lado, o terceiro ocupa a linha inteira e os demais entram no carrossel.</p>
    <div class="azo-cover-crop">
     <div class="azo-cover-fields">
      <label>Formato da prévia<select name="format"><option value="featured">Destaque lado a lado</option><option value="wide">Destaque panorâmico</option><option value="carousel">Carrossel</option></select></label>
@@ -83,10 +82,10 @@ export async function openCoverEditor({kind,id,title,photos,setting,fallback,ord
  $('#azo-cover-title',dialog).textContent=title||'Editar projeto';
  const form=$('form',dialog),grid=$('.azo-cover-grid',dialog),frame=$('.azo-cover-frame',dialog),preview=$('img',frame);
  const fileInput=$('input[type=file]',dialog),save=$('[data-save]',dialog),error=$('[role=alert]',dialog);
- const sectionInput=form.elements.section,orderInput=form.elements.order,formatInput=form.elements.format;
+ const sectionInput=form.elements.section,formatInput=form.elements.format;
  const ranges=[...form.querySelectorAll('input[type=range]')];
  const details=portfolioDetails(setting,order);
- sectionInput.value=details.section;orderInput.value=details.order;
+ sectionInput.value=details.section;
  let choice=setting?.cover||null,position=details.position,file=null,objectUrl='',busy=false,drag=null;
  function paintPosition(){
   const [x,y]=position||[50,50];
@@ -129,12 +128,12 @@ export async function openCoverEditor({kind,id,title,photos,setting,fallback,ord
  form.onsubmit=async event=>{
   event.preventDefault();
   if(busy)return;
-  const section=sectionInput.value,order=orderInput.valueAsNumber;
+  const section=sectionInput.value;
   busy=true;error.hidden=true;const controls=[...form.elements];controls.forEach(el=>el.disabled=true);save.textContent='Salvando…';
   try{
    const user=auth.currentUser;await requirePhotoAdmin(user);
    if(file){choice={mode:'upload',url:await upload(file,kind,id,n=>{$('[role=status]',dialog).textContent='Enviando imagem… '+n+'%'})};clearFile();refresh()}
-   await saveProjectPresentation(kind,id,{cover:choice,section,order,position},user);
+   await saveProjectPresentation(kind,id,{cover:choice,section,order:details.order,position},user);
    dialog.close();await onSaved?.();
   }catch(e){$('[role=status]',dialog).textContent='';error.textContent=e.message||'Não foi possível salvar o portfólio.';error.hidden=false}
   finally{busy=false;controls.forEach(el=>el.disabled=false);save.textContent='Salvar portfólio e capa'}

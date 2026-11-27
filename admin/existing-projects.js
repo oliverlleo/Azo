@@ -1,15 +1,6 @@
-import {loadCoverContext,builtinCoverPhotos,openCoverEditor} from './project-cover-editor.js?v=20261127-portfolio';
-import {coverId,chooseCover,portfolioDetails} from '../assets/js/project-cover.mjs';
+import {loadCoverContext,builtinCoverPhotos,openCoverEditor} from './project-cover-editor.js?v=20261127-order';
+import {BUILTIN_PROJECTS as BUILTINS,coverId,chooseCover,portfolioDetails} from '../assets/js/project-cover.mjs';
 import { auth, db, doc, getDoc, setDoc, deleteDoc, serverTimestamp, onAuthStateChanged } from '../assets/js/firebase-config.js';
-
-const BUILTINS = [
-  { key:'AS', title:'Casa AS', category:'Arquitetura residencial', order:10 },
-  { key:'HL', title:'Casa HL', category:'Arquitetura residencial', order:20 },
-  { key:'JT', title:'Casa JT', category:'Projeto residencial', order:30 },
-  { key:'MN', title:'Casa MN', category:'Arquitetura + construção', order:40 },
-  { key:'SE', title:'Casa SE', category:'Projeto residencial', order:50 },
-  { key:'EF', title:'Casa EF', category:'Interiores + área de lazer', order:60 }
-];
 
 const $ = (s,r=document)=>r.querySelector(s);
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -32,7 +23,7 @@ function ensurePanel() {
   const panel = document.createElement('section');
   panel.id = 'existing-projects-panel';
   panel.className = 'panel';
-  panel.style.marginBottom = '18px';
+  panel.style.marginBlock = '18px';
   panel.innerHTML = `
     <div class="panel-head">
       <div><p class="eyebrow">Projetos que já estão no site</p><h3>Gerencie os projetos atuais</h3></div>
@@ -40,7 +31,7 @@ function ensurePanel() {
     <div class="notice" style="margin-top:0"><b>Aqui ficam os projetos que vieram com o site.</b> Você pode mudar o nome, o tipo, ocultar, mostrar novamente ou abrir diretamente as fotos daquele projeto.</div>
     <div id="existing-project-list" class="project-list"></div>`;
   const toolbar = view.querySelector('.toolbar');
-  view.insertBefore(panel, toolbar || view.firstChild);
+  toolbar.after(panel);
   ensureModal();
 }
 
@@ -82,7 +73,7 @@ function render() {
       <div class="project-meta">
         <h3>${escapeHtml(project.title)}</h3>
         <p>${escapeHtml(project.category || 'Projeto')}</p>
-        <div class="chips"><span class="status ${project.published ? 'ok' : 'off'}">${project.published ? 'Aparece no site' : 'Oculto do site'}</span><span class="chip">${portfolioLabel} · ordem ${placement.order}</span></div>
+        <div class="chips"><span class="status ${project.published ? 'ok' : 'off'}">${project.published ? 'Aparece no site' : 'Oculto do site'}</span><span class="chip">${portfolioLabel}</span></div>
       </div>
       <div class="project-actions" style="flex-wrap:wrap;justify-content:flex-end">
         <button class="btn btn-ghost" type="button" data-existing-edit="${project.builtinKey}">Editar</button>

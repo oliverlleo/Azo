@@ -1,12 +1,14 @@
-import {COVER_RATIOS} from './project-cover.mjs';
+import {COVER_RATIOS,sortPortfolioProjects} from './project-cover.mjs';
 
 const sources=new Map();
 export const builtinPortfolioCards=[...document.querySelectorAll('.project-portfolio .portfolio-card[data-gallery]')];
 let portfolio;
+let ordering=new Map();
 
-export function setPortfolioProjects(source,projects){
+export function setPortfolioProjects(source,projects,orders){
   const root=document.querySelector('.project-portfolio');
   if(!root)return;
+  if(orders)ordering=orders;
   for(const {card,position} of projects||[]){
     if(!position)continue;
     const img=card.querySelector('img');
@@ -43,9 +45,10 @@ function connectPortfolio(root){
   }
 
   function render(){
-    const projects=[...sources.values()].flatMap(list=>list||[])
-      .filter(project=>project.section===section)
-      .sort((a,b)=>a.order-b.order||a.card.querySelector('h3').textContent.localeCompare(b.card.querySelector('h3').textContent,'pt-BR')||a.id.localeCompare(b.id));
+    const projects=sortPortfolioProjects(
+      [...sources.values()].flatMap(list=>list||[]).filter(project=>project.section===section),
+      ordering.get(section)
+    );
     const previousScroll=track.scrollLeft;
     const featured=projects.slice(0,3).map(({card},index)=>{
       card.classList.toggle('portfolio-card--wide',index===2);
