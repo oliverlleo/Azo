@@ -1,4 +1,5 @@
 .portfolio-hero {
+  --hero-font-scale: 1.2;
   min-height: 0;
   padding-bottom: clamp(1.35rem, 3.2vh, 1.85rem);
 }
@@ -8,14 +9,15 @@
 }
 
 .portfolio-hero .inner-hero__media img { animation: none; }
+.portfolio-hero .eyebrow { font-size: calc(.65rem * var(--hero-font-scale)); }
 .portfolio-hero h1 {
-  font-size: clamp(2.75rem, min(7.2vw, 8.8vh), 5.85rem);
+  font-size: calc(clamp(2.75rem, min(7.2vw, 8.8vh), 5.85rem) * var(--hero-font-scale));
   line-height: .89;
   margin: 11px 0 10px;
 }
 .portfolio-hero p {
-  max-width: 580px;
-  font-size: clamp(.88rem, 1.3vw, 1.05rem);
+  max-width: calc(580px * var(--hero-font-scale));
+  font-size: calc(clamp(.88rem, 1.3vw, 1.05rem) * var(--hero-font-scale));
   margin: 0;
 }
 
