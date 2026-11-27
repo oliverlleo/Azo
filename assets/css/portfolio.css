@@ -1,16 +1,15 @@
 .portfolio-hero {
   min-height: 0;
-  padding: clamp(5.8rem, 11.5svh, 6.9rem) 0 clamp(1.35rem, 3.2vh, 1.85rem);
+  padding-bottom: clamp(1.35rem, 3.2vh, 1.85rem);
 }
 
-.portfolio-hero .wrap,
 .project-portfolio .wrap {
   --max: 1120px;
 }
 
 .portfolio-hero .inner-hero__media img { animation: none; }
 .portfolio-hero h1 {
-  font-size: clamp(2.55rem, min(6.8vw, 8.2vh), 5.4rem);
+  font-size: clamp(2.75rem, min(7.2vw, 8.8vh), 5.85rem);
   line-height: .89;
   margin: 11px 0 10px;
 }
@@ -148,10 +147,8 @@
 .portfolio-message { margin: 20px 0 0; padding: 24px; border: 1px solid var(--line); border-radius: 18px; text-align: center; }
 
 @media (min-width: 950px) and (max-height: 820px) {
-  .portfolio-hero .wrap,
   .project-portfolio .wrap { --max: 1000px; }
-  .portfolio-hero { padding-block: 94px 22px; }
-  .portfolio-hero h1 { font-size: clamp(2.5rem, 7.7vh, 4rem); }
+  .portfolio-hero { padding-bottom: 22px; }
   .project-portfolio { padding-top: 21px; }
 }
 @media (max-width: 900px) {
