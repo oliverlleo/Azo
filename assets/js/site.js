@@ -222,7 +222,12 @@ if(!lb && $('.project-modal')){
 let lbKey='AS',lbIdx=0,lbLastFocused=null;const lbFocusableSelector='a[href],area[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';function renderLb(){if(!lb)return;const arr=galleryPhotos(lbKey);if(!arr.length){closeLb();return}lbIdx=(lbIdx+arr.length)%arr.length;const img=$('.lightbox__stage img',lb);if(img){img.removeAttribute('srcset');img.dataset.cmsSource=arr[lbIdx];const url=window.AZO_PROJECT_PHOTOS?.url(arr[lbIdx])||new URL(arr[lbIdx].split('/').pop(),galleryBase).href;img.src=window.AZO_CMS?.resolveAsset(url)||url;img.alt=`Projeto Casa ${lbKey} — imagem ${lbIdx+1}`}const ttl=$('.lightbox__title',lb);if(ttl)ttl.textContent=`Casa ${lbKey} · ${lbIdx+1}/${arr.length}`}
 function openLb(k,trigger=document.activeElement){if(!lb||!galleryPhotos(k).length)return;lbLastFocused=trigger||document.activeElement;lbKey=k;lbIdx=0;renderLb();if(!lb)return;lb.hidden=false;lb.setAttribute('aria-hidden','false');lb.classList.add('open');document.body.classList.add('no-scroll');$('.lightbox__close',lb)?.focus()}
 function closeLb(){if(!lb)return;const returnTarget=lbLastFocused;const fallbackSelector=returnTarget?.matches?.('.project-open')?'.project-open':null;lbLastFocused=null;lb.classList.remove('open');lb.setAttribute('aria-hidden','true');lb.hidden=true;document.body.classList.remove('no-scroll');if(returnTarget||fallbackSelector)setTimeout(()=>{const target=returnTarget?.isConnected?returnTarget:(fallbackSelector?document.querySelector(fallbackSelector):null);if(!lb.classList.contains('open')&&target?.isConnected&&typeof target.focus==='function')target.focus({preventScroll:true})},0)}
-$$('[data-gallery]').forEach(el=>el.addEventListener('click',()=>openLb(el.dataset.gallery,el)));
+$$('[data-gallery]').forEach(el=>{
+ el.addEventListener('click',()=>openLb(el.dataset.gallery,el));
+ if(el.matches('.portfolio-card'))el.addEventListener('keydown',event=>{
+  if(event.key==='Enter'||event.key===' '){event.preventDefault();openLb(el.dataset.gallery,el);}
+ });
+});
 $$('.project-card[data-project]').forEach(el=>{const open=()=>openLb(el.dataset.project.toUpperCase(),el);el.addEventListener('click',open);el.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open()}})});$('.lightbox__close')?.addEventListener('click',closeLb);$('.lb-prev')?.addEventListener('click',()=>{const a=galleryPhotos(lbKey);if(!a.length)return;lbIdx=(lbIdx-1+a.length)%a.length;renderLb()});$('.lb-next')?.addEventListener('click',()=>{const a=galleryPhotos(lbKey);if(!a.length)return;lbIdx=(lbIdx+1)%a.length;renderLb()});addEventListener('keydown',e=>{if(!lb?.classList.contains('open'))return;if(e.key==='Escape'){closeLb();return}if(e.key==='ArrowRight'){$('.lb-next')?.click();return}if(e.key==='ArrowLeft'){$('.lb-prev')?.click();return}if(e.key!=='Tab')return;const focusables=[...lb.querySelectorAll(lbFocusableSelector)].filter(el=>el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden');if(!focusables.length)return;const first=focusables[0],last=focusables[focusables.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}});
 
 // Two-step contact -> WhatsApp
@@ -230,14 +235,18 @@ const form=$('#lead-form');let formStep=0;function showStep(n){formStep=n;$$('.f
 if(form){showStep(0);$('.form-next',form)?.addEventListener('click',()=>{const req=$$('.form-step.active [required]',form);if(req.some(x=>!x.value.trim())){req.find(x=>!x.value.trim())?.focus();return}showStep(1)});$('.form-back',form)?.addEventListener('click',()=>showStep(0));form.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(form), lines=['Olá, equipe AZO! Gostaria de conversar sobre um projeto.',''];for(const [k,v] of fd.entries())if(v)lines.push(`${k}: ${v}`);const url='https://wa.me/5515997180355?text='+encodeURIComponent(lines.join('\n'));window.open(url,'_blank','noopener')})}
 
 // Load the project visibility module explicitly rather than relying only on an SDK side effect.
-import('./project-overrides.js?v=20261125-cover').catch(error=>{
+import('./project-overrides.js?v=20261127-order').catch(error=>{
  document.documentElement.dataset.azoProjectPhotosReady='failed';
+ if($('.project-portfolio'))import('./project-portfolio.js').then(({setPortfolioProjects})=>setPortfolioProjects('builtin',null));
  console.warn('[AZO] Galerias indisponíveis.',error);
 });
 // CMS is loaded only as a data layer. There is intentionally no public link to /admin/.
-import('./cms.js?v=20261126-resume').catch(error=>{
+import('./cms.js?v=20261127-order').catch(error=>{
  console.warn('[AZO CMS] runtime indisponível; site estático mantido.',error);
+ if($('.project-portfolio'))import('./project-portfolio.js').then(({setPortfolioProjects})=>setPortfolioProjects('custom',null));
  document.documentElement.dataset.cmsReady='failed';
+ delete document.documentElement.dataset.cmsPending;
+ document.getElementById('azo-cms-first-paint')?.remove();
  dispatchEvent(new CustomEvent('azo:cms-ready',{detail:{ok:false}}));
 });
 })();

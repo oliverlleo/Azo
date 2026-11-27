@@ -1,18 +1,13 @@
-import {readProjectCovers} from './project-cover-store.js';
-import {coverId,chooseCover} from './project-cover.mjs';
+import {readProjectPresentation} from './project-cover-store.js';
+import {BUILTIN_PROJECTS,coverId,chooseCover,portfolioDetails} from './project-cover.mjs';
+import {readPortfolioOrders} from './project-order-store.js';
+import {builtinPortfolioCards,setPortfolioProjects} from './project-portfolio.js';
 import { db, collection, getDocs } from './firebase-config.js';
 import { visibleProjectPhotos } from './project-photo-visibility.mjs';
 import { readProjectPhotoVisibility } from './project-photo-store.js';
 
-const ORDER = ['AS','HL','JT','MN','SE','EF'];
-const DEFAULTS = {
-  AS:{title:'Casa AS',category:'Arquitetura residencial'},
-  HL:{title:'Casa HL',category:'Arquitetura residencial'},
-  JT:{title:'Casa JT',category:'Projeto residencial'},
-  MN:{title:'Casa MN',category:'Arquitetura + construção'},
-  SE:{title:'Casa SE',category:'Projeto residencial'},
-  EF:{title:'Casa EF',category:'Interiores + área de lazer'}
-};
+const ORDER = BUILTIN_PROJECTS.map(({key})=>key);
+const DEFAULTS = Object.fromEntries(BUILTIN_PROJECTS.map(project=>[project.key,project]));
 const overrides = new Map();
 let hiddenPhotos = new Set();
 let addedPhotos = new Map(),projectCovers=new Map();
@@ -34,10 +29,15 @@ function current(key){
   return {...DEFAULTS[key],...saved,published:saved.published !== false};
 }
 
-function applyProjectsPage(){
+function applyProjectsPage(orders){
+  const cards=[];
   for(const key of ORDER){
     const project=current(key);
-    for(const card of document.querySelectorAll(`.portfolio-card[data-gallery="${key}"],.case-card[data-gallery="${key}"],.project-card[data-project="${key.toLowerCase()}"]`)){
+    const id=coverId('builtin',key);
+    const setting=projectCovers.get(id);
+    const details=portfolioDetails(setting,project.order??DEFAULTS[key].order);
+    const otherCards=document.querySelectorAll(`.case-card[data-gallery="${key}"],.project-card[data-project="${key.toLowerCase()}"]`);
+    for(const card of [...builtinPortfolioCards.filter(card=>card.dataset.gallery===key),...otherCards]){
       const visible=project.published && photos(key).length>0;
       card.hidden=!visible;
       card.style.display=visible?'':'none';
@@ -46,10 +46,16 @@ function applyProjectsPage(){
       const meta=card.querySelector('.portfolio-card__text div span');
       const img=card.querySelector('img');
       if(title) title.textContent=project.title;
-      if(meta) meta.textContent=`${project.category || 'Projeto'} · abrir galeria`;
-      if(img){img.alt=project.title;const list=photos(key).map(path=>({key:path,url:photoURL(path)}));const chosen=chooseCover(projectCovers.get(coverId('builtin',key)),list);if(chosen.selected){img.removeAttribute('srcset');if(chosen.key){img.dataset.cmsSource=chosen.key;img.src=window.AZO_CMS?.resolveAsset(chosen.url)||chosen.url}else{delete img.dataset.cmsSource;img.src=chosen.url}}else cover(img,key);}
+      if(meta) meta.textContent=project.category || 'Projeto';
+      if(img){img.alt=project.title;const list=photos(key).map(path=>({key:path,url:photoURL(path)}));const chosen=chooseCover(setting?.cover,list);if(chosen.selected){img.removeAttribute('srcset');if(chosen.key){img.dataset.cmsSource=chosen.key;img.src=window.AZO_CMS?.resolveAsset(chosen.url)||chosen.url}else{delete img.dataset.cmsSource;img.src=chosen.url}}else cover(img,key);}
+      if(card.matches('.portfolio-card')){
+        card.setAttribute('aria-label',`Abrir galeria ${project.title}`);
+        if(img)img.alt='';
+        cards.push({id,card,title:project.title,...details});
+      }
     }
   }
+  setPortfolioProjects('builtin',cards,orders);
 }
 
 function installLightboxTitleSync(){
@@ -142,7 +148,13 @@ async function load(){
   if(window.__azoProjectVisibilityStarted)return;
   window.__azoProjectVisibilityStarted=true;
   try{
-    const [snap,visibility,covers]=await Promise.all([getDocs(collection(db,'projectSettings')),readProjectPhotoVisibility(),readProjectCovers().catch(()=>new Map())]);projectCovers=covers;
+    const [snap,visibility,covers,orders]=await Promise.all([
+      getDocs(collection(db,'projectSettings')),
+      readProjectPhotoVisibility(),
+      readProjectPresentation().catch(()=>new Map()),
+      builtinPortfolioCards.length?readPortfolioOrders().catch(()=>null):null
+    ]);
+    projectCovers=covers;
     hiddenPhotos=visibility.hidden;
     addedPhotos=visibility.additions;
     snap.forEach(item=>{
@@ -155,13 +167,14 @@ async function load(){
     if(!document.documentElement.dataset.cmsReady){
       await new Promise(resolve=>window.addEventListener('azo:cms-ready',resolve,{once:true}));
     }
-    applyProjectsPage();
-    rebuildHomeProjects();
-    installLightboxTitleSync();
     window.AZO_PROJECT_PHOTOS={photos:key=>current(key).published?photos(key):[],url:photoURL};
     document.documentElement.dataset.azoProjectPhotosReady='true';
+    applyProjectsPage(orders);
+    rebuildHomeProjects();
+    installLightboxTitleSync();
   }catch(error){
     document.documentElement.dataset.azoProjectPhotosReady='failed';
+    setPortfolioProjects('builtin',null);
     console.warn('[AZO] Projetos originais ocultos até confirmar a visibilidade das fotos.',error);
   }
 }

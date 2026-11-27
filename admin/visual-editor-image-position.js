@@ -99,6 +99,12 @@ function start(button,box,img){
 export function mountImagePositioning(img,side){
  const actions=side?.querySelector('.ve3-actions');if(!actions||!imagePositionKey(img))return;
  if(active&&!active.saving)finish(active,true);
+ if(img.closest('.project-portfolio .portfolio-card')){
+  const note=document.createElement('p');note.className='ve3-position-controls';
+  note.textContent='Ajuste esta capa em Projetos → Editar portfólio e capa.';
+  actions.after(note);
+  return;
+ }
  const button=document.createElement('button');button.type='button';button.className='btn btn-ghost ve3-position-button';button.textContent='Posicionar';button.setAttribute('aria-pressed','false');
  const box=document.createElement('div');box.className='ve3-position-controls';box.hidden=true;
  box.innerHTML='<p><b>Enquadramento · <span data-position-device></span></b></p><p data-position-hint></p><label>Horizontal <output></output><input type="range" min="0" max="100" step="0.1" aria-label="Posição horizontal"></label><label>Vertical <output></output><input type="range" min="0" max="100" step="0.1" aria-label="Posição vertical"></label><div class="ve3-position-tools"><button type="button" class="btn btn-ghost" data-position-reset>Voltar à posição original</button><button type="button" class="btn btn-ghost" data-position-cancel>Cancelar</button></div><p role="alert" hidden></p>';

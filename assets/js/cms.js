@@ -1,5 +1,7 @@
-import {readProjectCovers} from './project-cover-store.js';
-import {coverId,chooseCover} from './project-cover.mjs';
+import {readProjectPresentation} from './project-cover-store.js';
+import {coverId,chooseCover,portfolioDetails} from './project-cover.mjs';
+import {setPortfolioProjects} from './project-portfolio.js';
+import {readPortfolioOrders} from './project-order-store.js';
 import {renderTeamHotspots,isTeamPhoto,TEAM_SELECTOR} from './team-hotspots.mjs?v=20261125-team';
 import { db, collection, doc, getDoc, getDocs } from './firebase-config.js';
 import { normalizePageId, applyPageOverrides, normalizeAssetPath } from './cms-core.js';
@@ -69,6 +71,14 @@ function resolveImage(img) {
   }
 }
 
+function applyManagedPosition(img){
+  if(img.hasAttribute('data-portfolio-crop')){
+    applyImagePositionItems(img,[]);
+  }else if(positionItems){
+    applyImagePositionItems(img,positionItems);
+  }
+}
+
 function resolveAllImages(root = document) {
   root.querySelectorAll?.('img').forEach(resolveImage);
 }
@@ -80,10 +90,10 @@ function watchImages() {
       for (const node of record.addedNodes || []) {
         if (node instanceof HTMLImageElement) {
           resolveImage(node);
-          if(positionItems)applyImagePositionItems(node,positionItems);
+          applyManagedPosition(node);
         } else if (node instanceof Element) {
           resolveAllImages(node);
-          if(positionItems)node.querySelectorAll('img').forEach(img=>applyImagePositionItems(img,positionItems));
+          node.querySelectorAll('img').forEach(applyManagedPosition);
         }
       }
     }
@@ -108,7 +118,7 @@ async function loadPage() {
   teamItems=items.filter(i=>i.type==='image-hotspot');
   positionItems=items.filter(i=>i.type==='image-position');
   if(!gateTimedOut)applyPageOverrides(document,items);
-  document.querySelectorAll('img').forEach(img=>applyImagePositionItems(img,positionItems));
+  document.querySelectorAll('img').forEach(applyManagedPosition);
 }
 
 function injectProjectStyles() {
@@ -123,6 +133,7 @@ function injectProjectStyles() {
 
 let activeProject = null;
 let activeProjectIndex = 0;
+let previousProjectFocus = null;
 
 function getCmsLightbox() {
   let box = document.querySelector('.cms-project-lightbox');
@@ -132,8 +143,9 @@ function getCmsLightbox() {
   box.className = 'cms-project-lightbox';
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-labelledby', 'cms-project-title');
   box.innerHTML = `
-    <div class="cms-project-lightbox__top"><div><div class="cms-project-lightbox__title"></div><div class="cms-project-lightbox__count"></div></div><button class="cms-project-lightbox__close" aria-label="Fechar">×</button></div>
+    <div class="cms-project-lightbox__top"><div><div class="cms-project-lightbox__title" id="cms-project-title"></div><div class="cms-project-lightbox__count"></div></div><button class="cms-project-lightbox__close" aria-label="Fechar">×</button></div>
     <div class="cms-project-lightbox__stage"><img alt=""></div>
     <div class="cms-project-lightbox__controls"><button class="cms-project-prev">← Anterior</button><button class="cms-project-next">Próxima →</button></div>`;
   document.body.appendChild(box);
@@ -156,20 +168,24 @@ function renderProjectImage() {
   box.querySelector('.cms-project-lightbox__count').textContent = images.length ? `${String(activeProjectIndex + 1).padStart(2,'0')} / ${String(images.length).padStart(2,'0')}` : '';
 }
 
-function openProject(project) {
+function openProject(project,trigger) {
   if (!project?.images?.length) return;
+  previousProjectFocus=trigger;
   activeProject = project;
   activeProjectIndex = 0;
   const box = getCmsLightbox();
   renderProjectImage();
   box.classList.add('open');
   document.body.classList.add('no-scroll');
+  box.querySelector('.cms-project-lightbox__close').focus();
 }
 
 function closeProject() {
   document.querySelector('.cms-project-lightbox')?.classList.remove('open');
   document.body.classList.remove('no-scroll');
   activeProject = null;
+  previousProjectFocus?.focus({preventScroll:true});
+  previousProjectFocus=null;
 }
 
 function moveProject(delta) {
@@ -180,16 +196,21 @@ function moveProject(delta) {
 
 async function loadProjects() {
   if (pageId !== 'projetos') return;
-  const grid = document.querySelector('.projects-grid');
-  if (!grid) return;
-  const [snap,covers]=await Promise.all([getDocs(collection(db, 'projects')),readProjectCovers().catch(()=>new Map())]);
+  if (!document.querySelector('.project-portfolio')) return;
+  const [snap,settings,orders]=await Promise.all([
+    getDocs(collection(db,'projects')),
+    readProjectPresentation().catch(()=>new Map()),
+    readPortfolioOrders().catch(()=>null)
+  ]);
   const projects = snap.docs.map(item => ({ id: item.id, ...item.data() }))
-    .filter(project => project.published !== false)
-    .sort((a,b) => (Number(a.order) || 9999) - (Number(b.order) || 9999));
+    .filter(project => project.published !== false);
+  const cards=[];
   for (const project of projects) {
     if (!project?.title || !project?.images?.length) continue;
-    if (grid.querySelector(`[data-cms-project="${CSS.escape(project.id)}"]`)) continue;
-    const cover=chooseCover(covers.get(coverId('custom',project.id)),project.images.filter(i=>i?.url).map(i=>({key:i.url,url:i.url})),project.coverUrl||project.images[0]?.url).url;
+    const id=coverId('custom',project.id);
+    const setting=settings.get(id);
+    const details=portfolioDetails(setting,project.order);
+    const cover=chooseCover(setting?.cover,project.images.filter(i=>i?.url).map(i=>({key:i.url,url:i.url})),project.coverUrl||project.images[0]?.url).url;
     if (!cover) continue;
     const card = document.createElement('article');
     card.className = 'portfolio-card';
@@ -197,14 +218,16 @@ async function loadProjects() {
     card.tabIndex = 0;
     card.setAttribute('role','button');
     card.setAttribute('aria-label', `Abrir galeria ${project.title}`);
-    card.innerHTML = `<img loading="lazy"><div class="portfolio-card__text"><div><h3></h3><span></span></div><span>↗</span></div>`;
-    card.querySelector('img').src=cover;card.querySelector('img').alt=project.title;
+    card.innerHTML = `<img loading="lazy" decoding="async" alt=""><div class="portfolio-card__text" data-cms-ignore><div><h3></h3><span></span></div><span class="portfolio-card__arrow" aria-hidden="true">→</span></div>`;
+    const image=card.querySelector('img');
+    image.src=cover;
     card.querySelector('h3').textContent = project.title;
-    card.querySelector('.portfolio-card__text div span').textContent = project.category || 'Projeto · abrir galeria';
-    card.addEventListener('click', () => openProject(project));
-    card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProject(project); } });
-    grid.appendChild(card);
+    card.querySelector('.portfolio-card__text div span').textContent = project.category || 'Projeto';
+    card.addEventListener('click', () => openProject(project,card));
+    card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProject(project,card); } });
+    cards.push({id,card,title:project.title,...details});
   }
+  setPortfolioProjects('custom',cards,orders);
 }
 
 addEventListener('keydown', event => {
@@ -212,6 +235,12 @@ addEventListener('keydown', event => {
   if (event.key === 'Escape') closeProject();
   if (event.key === 'ArrowLeft') moveProject(-1);
   if (event.key === 'ArrowRight') moveProject(1);
+  if (event.key === 'Tab') {
+    const buttons=[...getCmsLightbox().querySelectorAll('button')];
+    const first=buttons[0],last=buttons.at(-1);
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+    if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+  }
 });
 
 function signalReady(ok) {
@@ -228,7 +257,7 @@ window.AZO_CMS = { assetMap, resolveAsset, canonicalAsset,
   get imagePositionsReady(){return positionItems!==null},
   updateImagePositions(items){
     positionItems=items.filter(i=>i.type==='image-position');
-    document.querySelectorAll('img').forEach(img=>applyImagePositionItems(img,positionItems));
+    document.querySelectorAll('img').forEach(applyManagedPosition);
   }
 };
 
@@ -236,7 +265,10 @@ window.AZO_CMS = { assetMap, resolveAsset, canonicalAsset,
   try {
     watchImages();
     // Start project reads independently; the first-paint timeout must never discard published projects.
-    await Promise.all([loadAssets(), loadPage(), loadProjects()]);
+    await Promise.all([loadAssets(), loadPage(), loadProjects().catch(error=>{
+      setPortfolioProjects('custom',null);
+      throw error;
+    })]);
     renderTeamHotspots(document,teamItems);
     if (gateTimedOut) return;
     signalReady(true);

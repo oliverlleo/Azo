@@ -2,9 +2,9 @@ import {registerProject,completedImages} from './project-registration.mjs?v=2026
 import {saveQueue,loadQueue,removeQueue,listQueues} from './project-registration-local.js?v=20261126-resume';
 import {prepareImageUpload} from '../assets/js/image-upload.js?v=20261126-resume';
 import {supabase,supabaseConfig} from '../assets/js/firebase-config.js';
-import {openCoverEditor,customCoverPhotos} from './project-cover-editor.js?v=20261125-cover';
-import {readProjectCovers} from '../assets/js/project-cover-store.js';
-import {coverId,chooseCover} from '../assets/js/project-cover.mjs';
+import {openCoverEditor,customCoverPhotos} from './project-cover-editor.js?v=20261127-order';
+import {readProjectPresentation} from '../assets/js/project-cover-store.js';
+import {coverId,chooseCover,portfolioDetails} from '../assets/js/project-cover.mjs';
 let customCovers=new Map();
 import { auth, db, storage } from '../assets/js/firebase-config.js';
 import {
@@ -591,7 +591,7 @@ async function loadProjects() {
   const root = $('#project-list');
   root.innerHTML = '<div class="loading-grid"><div class="skeleton"></div><div class="skeleton"></div></div>';
   try {
-    const [snap,covers]=await Promise.all([getDocs(collection(db, 'projects')),readProjectCovers().catch(()=>new Map())]);customCovers=covers;
+    const [snap,covers]=await Promise.all([getDocs(collection(db, 'projects')),readProjectPresentation().catch(()=>new Map())]);customCovers=covers;
     state.projects = snap.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (Number(a.order) || 9999) - (Number(b.order) || 9999));
     const pending=await listQueues(state.user?.id||state.user?.uid||'').catch(()=>[]);
     for(const draft of pending){if(!draft?.id||!draft.metadata)continue;const p=state.projects.find(p=>p.id===draft.id);if(p)p.pendingRegistration=true;else state.projects.push({id:draft.id,...draft.metadata,published:false,images:completedImages(draft.queue||[],draft.metadata.title),pendingRegistration:true,localOnly:true});}
@@ -608,14 +608,17 @@ function renderProjects() {
     return;
   }
   root.innerHTML = state.projects.map(project => {
-    const cover=chooseCover(customCovers.get(coverId('custom',project.id)),customCoverPhotos(project),project.coverUrl||project.images?.[0]?.url).url;
+    const setting=customCovers.get(coverId('custom',project.id));
+    const cover=chooseCover(setting?.cover,customCoverPhotos(project),project.coverUrl||project.images?.[0]?.url).url;
+    const placement=portfolioDetails(setting,project.order);
+    const portfolioLabel=placement.section==='interiores'?'Interiores':'Exteriores';
     return `<article class="project-row">
       <div class="project-thumb">${cover ? `<img src="${escapeHtml(cover)}" alt="">` : ''}</div>
-      <div class="project-meta"><h3>${escapeHtml(project.title || 'Sem título')}</h3><p>${escapeHtml(project.category || 'Projeto')} · ${project.images?.length || 0} imagem(ns)</p><div class="chips"><span class="status ${project.published === false ? 'off' : 'ok'}">${project.published === false ? 'Rascunho' : 'Publicado'}</span><span class="chip">Ordem ${Number(project.order) || 100}</span>${project.pendingRegistration?'<span class="chip">Cadastro pendente</span>':''}</div></div>
-      <div class="project-actions"><button class="btn btn-ghost" data-edit-project="${escapeHtml(project.id)}">${project.pendingRegistration||project.published===false?'Continuar / editar':'Editar'}</button><button class="btn btn-ghost" data-cover-project="${escapeHtml(project.id)}">Editar capa</button><button class="btn btn-danger" data-delete-project="${project.id}">Excluir</button></div>
+      <div class="project-meta"><h3>${escapeHtml(project.title || 'Sem título')}</h3><p>${escapeHtml(project.category || 'Projeto')} · ${project.images?.length || 0} imagem(ns)</p><div class="chips"><span class="status ${project.published === false ? 'off' : 'ok'}">${project.published === false ? 'Rascunho' : 'Publicado'}</span><span class="chip">${portfolioLabel}</span>${project.pendingRegistration?'<span class="chip">Cadastro pendente</span>':''}</div></div>
+      <div class="project-actions"><button class="btn btn-ghost" data-edit-project="${escapeHtml(project.id)}">${project.pendingRegistration||project.published===false?'Continuar / editar':'Editar'}</button>${project.localOnly?'':`<button class="btn btn-ghost" data-cover-project="${escapeHtml(project.id)}">Editar portfólio e capa</button>`}<button class="btn btn-danger" data-delete-project="${escapeHtml(project.id)}">Excluir</button></div>
     </article>`;
   }).join('');
-  $$('[data-cover-project]', root).forEach(btn=>btn.addEventListener('click',async()=>{btn.disabled=true;try{const project=state.projects.find(p=>p.id===btn.dataset.coverProject);if(!project)return;const covers=await readProjectCovers();await openCoverEditor({kind:'custom',id:project.id,title:project.title,photos:customCoverPhotos(project),setting:covers.get(coverId('custom',project.id)),fallback:project.coverUrl||project.images?.[0]?.url,onSaved:async()=>{await loadProjects();toast('Capa atualizada no portfólio.')}})}catch(e){toast(e.message||'Não foi possível abrir o editor de capa.','error')}finally{btn.disabled=false}}));
+  $$('[data-cover-project]', root).forEach(btn=>btn.addEventListener('click',async()=>{btn.disabled=true;try{const project=state.projects.find(p=>p.id===btn.dataset.coverProject);if(!project)return;const covers=await readProjectPresentation();await openCoverEditor({kind:'custom',id:project.id,title:project.title,order:project.order,photos:customCoverPhotos(project),setting:covers.get(coverId('custom',project.id)),fallback:project.coverUrl||project.images?.[0]?.url,onSaved:async()=>{await loadProjects();toast('Portfólio e capa atualizados.')}})}catch(e){toast(e.message||'Não foi possível abrir o editor de portfólio.','error')}finally{btn.disabled=false}}));
   $$('[data-edit-project]', root).forEach(button => button.addEventListener('click', () => openProjectModal(button.dataset.editProject)));
   $$('[data-delete-project]', root).forEach(button => button.addEventListener('click', () => deleteProject(button.dataset.deleteProject)));
 }
@@ -626,11 +629,11 @@ function cleanupObjectUrls() {
 }
 
 function projectMetadata(){
- return {title:$('#project-title').value.trim(),category:$('#project-category').value.trim()||'Projeto · abrir galeria',description:$('#project-description').value.trim(),order:Number($('#project-order').value)||100,published:$('#project-published').checked};
+ return {title:$('#project-title').value.trim(),category:$('#project-category').value.trim()||'Projeto',description:$('#project-description').value.trim(),order:Number($('#project-order').value),published:$('#project-published').checked};
 }
 function applyProjectMetadata(p){
  $('#project-title').value=p?.title||'';$('#project-category').value=p?.category||'';$('#project-description').value=p?.description||'';
- $('#project-order').value=Number(p?.order)||100;$('#project-published').checked=p?.published!==false;
+ $('#project-order').value=portfolioDetails(null,p?.order).order;$('#project-published').checked=p?.published!==false;
 }
 function projectError(message=''){const el=$('#project-save-error');el.textContent=message;el.hidden=!message}
 async function openProjectModal(projectId=''){

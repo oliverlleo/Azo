@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="theme-color" content="#0d2f35">
   <title>AZO Studio — Administração</title>
-  <link rel="stylesheet" href="admin.css?v=20261124-photos">
+  <link rel="stylesheet" href="admin.css?v=20261127-order">
   <style>
   [hidden]{display:none!important}
   .project-registration-progress{padding:16px;border:1px solid #d7ddd9;border-radius:16px;background:#f7f9f8;display:grid;gap:12px;color:#0d2f35}
@@ -110,7 +110,7 @@
       </div>
 
       <div class="view" id="view-projects">
-        <div class="toolbar panel slim"><div><p class="eyebrow">Portfólio dinâmico</p><strong>Projetos adicionados aqui aparecem na página Projetos.</strong></div><div class="toolbar-spacer"></div><button class="btn btn-primary" id="new-project">+ Novo projeto</button></div>
+        <div class="toolbar panel slim project-toolbar"><div class="toolbar-spacer"></div><button class="btn btn-ghost" type="button" id="open-project-order">Ordenar projetos</button><button class="btn btn-primary" id="new-project">+ Novo projeto</button></div>
         <div class="project-list" id="project-list"></div>
       </div>
 
@@ -123,15 +123,31 @@
     </section>
   </div>
 
+  <dialog class="project-order-dialog" id="project-order-dialog" aria-labelledby="project-order-title">
+    <form>
+      <h2 id="project-order-title">Ordenar projetos</h2>
+      <label class="project-order-category">Categoria do portfólio
+        <select name="section"><option value="exteriores">Exteriores</option><option value="interiores">Interiores</option></select>
+      </label>
+      <p>Arraste os projetos ou use as setas para definir a posição de cada um no site.</p>
+      <p data-order-status role="status"></p>
+      <p data-order-error role="alert" hidden></p>
+      <ol class="project-order-list" role="list" aria-label="Ordem de exibição dos projetos"></ol>
+      <footer><button class="btn btn-ghost" type="button" data-order-cancel>Cancelar</button><button class="btn btn-primary" type="submit" disabled>Salvar ordem</button></footer>
+    </form>
+  </dialog>
+
   <div class="modal" id="project-modal" hidden>
     <div class="modal-backdrop" data-close-modal></div>
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="project-modal-title">
       <header><div><p class="eyebrow">Portfólio</p><h2 id="project-modal-title">Novo projeto</h2></div><button class="icon-button" data-close-modal aria-label="Fechar">×</button></header>
       <form id="project-form">
         <input type="hidden" id="project-id">
-        <div class="form-grid"><label>Título<input id="project-title" required maxlength="90" placeholder="Ex.: Casa Horizonte"></label><label>Categoria<input id="project-category" maxlength="90" placeholder="Ex.: Arquitetura residencial"></label></div>
+        <div class="form-grid"><label>Título<input id="project-title" required maxlength="90" placeholder="Ex.: Casa Horizonte"></label><label>Tipo do projeto<input id="project-category" maxlength="90" placeholder="Ex.: Arquitetura residencial"></label></div>
         <label>Descrição<textarea id="project-description" rows="3" maxlength="600" placeholder="Descrição opcional do projeto"></textarea></label>
-        <div class="form-grid"><label>Ordem<input id="project-order" type="number" min="0" value="100"></label><label class="switch-field">Publicado <span class="switch"><input id="project-published" type="checkbox" checked><i></i></span></label></div>
+        <input id="project-order" type="hidden" value="100">
+        <label class="switch-field">Publicado <span class="switch"><input id="project-published" type="checkbox" checked><i></i></span></label>
+        <p class="notice" style="margin:0">Depois de salvar, use “Editar portfólio e capa” para escolher a categoria e “Ordenar projetos” para definir a posição no portfólio.</p>
         <div class="upload-zone" id="project-upload-zone"><input id="project-files" type="file" accept="image/*" multiple><div><b>＋</b><strong>Adicionar imagens</strong><small>Arraste ou escolha várias imagens. A primeira será a capa.</small></div></div>
         <div class="project-images" id="project-images"></div>
         <section class="project-registration-progress" id="project-progress" hidden aria-live="polite">
@@ -155,8 +171,9 @@
   <input type="file" id="asset-file-input" accept="image/*" hidden>
   <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
   <script type="module" src="friendly-ui.js?v=20261124-photos"></script>
-  <script type="module" src="admin.js?v=20261126-resume"></script>
-  <script type="module" src="existing-projects.js?v=20261125-cover"></script>
+  <script type="module" src="admin.js?v=20261127-order"></script>
+  <script type="module" src="existing-projects.js?v=20261127-order"></script>
+  <script type="module" src="project-order.js?v=20261127-order"></script>
   <script type="module" src="visual-editor.js?v=20261125-team"></script>
 </body>
 </html>

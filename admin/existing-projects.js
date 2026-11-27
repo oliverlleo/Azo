@@ -1,15 +1,6 @@
-import {loadCoverContext,builtinCoverPhotos,openCoverEditor} from './project-cover-editor.js?v=20261125-cover';
-import {coverId,chooseCover} from '../assets/js/project-cover.mjs';
+import {loadCoverContext,builtinCoverPhotos,openCoverEditor} from './project-cover-editor.js?v=20261127-order';
+import {BUILTIN_PROJECTS as BUILTINS,coverId,chooseCover,portfolioDetails} from '../assets/js/project-cover.mjs';
 import { auth, db, doc, getDoc, setDoc, deleteDoc, serverTimestamp, onAuthStateChanged } from '../assets/js/firebase-config.js';
-
-const BUILTINS = [
-  { key:'AS', title:'Casa AS', category:'Arquitetura residencial', order:10 },
-  { key:'HL', title:'Casa HL', category:'Arquitetura residencial', order:20 },
-  { key:'JT', title:'Casa JT', category:'Projeto residencial', order:30 },
-  { key:'MN', title:'Casa MN', category:'Arquitetura + construção', order:40 },
-  { key:'SE', title:'Casa SE', category:'Projeto residencial', order:50 },
-  { key:'EF', title:'Casa EF', category:'Interiores + área de lazer', order:60 }
-];
 
 const $ = (s,r=document)=>r.querySelector(s);
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -32,7 +23,7 @@ function ensurePanel() {
   const panel = document.createElement('section');
   panel.id = 'existing-projects-panel';
   panel.className = 'panel';
-  panel.style.marginBottom = '18px';
+  panel.style.marginBlock = '18px';
   panel.innerHTML = `
     <div class="panel-head">
       <div><p class="eyebrow">Projetos que já estão no site</p><h3>Gerencie os projetos atuais</h3></div>
@@ -40,7 +31,7 @@ function ensurePanel() {
     <div class="notice" style="margin-top:0"><b>Aqui ficam os projetos que vieram com o site.</b> Você pode mudar o nome, o tipo, ocultar, mostrar novamente ou abrir diretamente as fotos daquele projeto.</div>
     <div id="existing-project-list" class="project-list"></div>`;
   const toolbar = view.querySelector('.toolbar');
-  view.insertBefore(panel, toolbar || view.firstChild);
+  toolbar.after(panel);
   ensureModal();
 }
 
@@ -73,23 +64,27 @@ function render() {
   ensurePanel();
   const root = $('#existing-project-list');
   if (!root) return;
-  root.innerHTML = data.map(project => `
+  root.innerHTML = data.map(project => {
+    const placement=portfolioDetails(coverContext?.covers.get(coverId('builtin',project.builtinKey)),project.order);
+    const portfolioLabel=placement.section==='interiores'?'Interiores':'Exteriores';
+    return `
     <article class="project-row">
       <div class="project-thumb"><img src="${escapeHtml(project.displayCover||`../assets/images/projects/${project.builtinKey.toLowerCase()}-1.webp`)}" alt="${escapeHtml(project.title)}"></div>
       <div class="project-meta">
         <h3>${escapeHtml(project.title)}</h3>
         <p>${escapeHtml(project.category || 'Projeto')}</p>
-        <div class="chips"><span class="status ${project.published ? 'ok' : 'off'}">${project.published ? 'Aparece no site' : 'Oculto do site'}</span><span class="chip">Projeto original</span></div>
+        <div class="chips"><span class="status ${project.published ? 'ok' : 'off'}">${project.published ? 'Aparece no site' : 'Oculto do site'}</span><span class="chip">${portfolioLabel}</span></div>
       </div>
       <div class="project-actions" style="flex-wrap:wrap;justify-content:flex-end">
         <button class="btn btn-ghost" type="button" data-existing-edit="${project.builtinKey}">Editar</button>
-        <button class="btn btn-ghost" type="button" data-existing-cover="${project.builtinKey}">Editar capa</button><button class="btn btn-ghost" type="button" data-existing-photos="${project.builtinKey}">Gerenciar fotos</button><button class="btn btn-primary" type="button" data-existing-add="${project.builtinKey}">+ Adicionar fotos</button>
+        <button class="btn btn-ghost" type="button" data-existing-cover="${project.builtinKey}">Editar portfólio e capa</button><button class="btn btn-ghost" type="button" data-existing-photos="${project.builtinKey}">Gerenciar fotos</button><button class="btn btn-primary" type="button" data-existing-add="${project.builtinKey}">+ Adicionar fotos</button>
         <button class="btn ${project.published ? 'btn-danger' : 'btn-primary'}" type="button" data-existing-toggle="${project.builtinKey}">${project.published ? 'Remover do site' : 'Mostrar novamente'}</button>
         ${project.hasOverride ? `<button class="btn btn-ghost" type="button" data-existing-restore="${project.builtinKey}">Voltar ao original</button>` : ''}
       </div>
-    </article>`).join('');
+    </article>`;
+  }).join('');
 
-  root.querySelectorAll('[data-existing-cover]').forEach(btn=>btn.addEventListener('click',async()=>{btn.disabled=true;try{const key=btn.dataset.existingCover,project=data.find(p=>p.builtinKey===key);const ctx=await loadCoverContext();const photos=await builtinCoverPhotos(key,ctx.visibility,ctx.assets);await openCoverEditor({kind:'builtin',id:key,title:project.title,photos,setting:ctx.covers.get(coverId('builtin',key)),fallback:photos[0]?.url,onSaved:async()=>{await load();toast('Capa atualizada no portfólio.')}})}catch(e){toast(e.message||'Não foi possível abrir o editor de capa.','error')}finally{btn.disabled=false}}));
+  root.querySelectorAll('[data-existing-cover]').forEach(btn=>btn.addEventListener('click',async()=>{btn.disabled=true;try{const key=btn.dataset.existingCover,project=data.find(p=>p.builtinKey===key);const ctx=await loadCoverContext();const photos=await builtinCoverPhotos(key,ctx.visibility,ctx.assets);await openCoverEditor({kind:'builtin',id:key,title:project.title,order:project.order,photos,setting:ctx.covers.get(coverId('builtin',key)),fallback:photos[0]?.url,onSaved:async()=>{await load();toast('Portfólio e capa atualizados.')}})}catch(e){toast(e.message||'Não foi possível abrir o editor de portfólio.','error')}finally{btn.disabled=false}}));
   root.querySelectorAll('[data-existing-edit]').forEach(btn=>btn.addEventListener('click',()=>openModal(btn.dataset.existingEdit)));
   root.querySelectorAll('[data-existing-photos]').forEach(btn=>btn.addEventListener('click',()=>openPhotos(btn.dataset.existingPhotos)));
   root.querySelectorAll('[data-existing-add]').forEach(btn=>btn.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('azo:add-project-photos',{detail:{key:btn.dataset.existingAdd}}))));
@@ -199,7 +194,7 @@ async function load() {
     const snap = await getDoc(doc(db,'projectSettings',`builtin-${base.key}`));
     const saved = snap.exists() ? snap.data() : {};
     const photos=coverContext?await builtinCoverPhotos(base.key,coverContext.visibility,coverContext.assets):[];
-    const displayCover=chooseCover(coverContext?.covers.get(coverId('builtin',base.key)),photos).url;
+    const displayCover=chooseCover(coverContext?.covers.get(coverId('builtin',base.key))?.cover,photos).url;
     rows.push({
       displayCover,
       ...base,
