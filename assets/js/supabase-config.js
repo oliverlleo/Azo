@@ -181,7 +181,6 @@ export {supabase,supabaseConfig,auth,db,storage,collection,doc,getDoc,getDocs,se
 const OBRAS_ASSET_VERSION='20260810-2238';
 const isAdminRuntime=/\/admin\/?(?:index\.html)?$/i.test(location.pathname)||location.pathname.includes('/admin/');
 if(isAdminRuntime){
-  import('../../admin/existing-projects.js?v=20261125-cover').catch(error=>console.warn('[AZO Admin] Projetos existentes indisponíveis.',error));
   if(!document.querySelector('link[data-azo-obras-style]')){
     const style=document.createElement('link');
     style.rel='stylesheet';

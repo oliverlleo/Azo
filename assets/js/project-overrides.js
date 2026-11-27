@@ -1,5 +1,6 @@
-import {readProjectCovers} from './project-cover-store.js';
-import {coverId,chooseCover} from './project-cover.mjs';
+import {readProjectPresentation} from './project-cover-store.js';
+import {coverId,chooseCover,portfolioDetails} from './project-cover.mjs';
+import {builtinPortfolioCards,setPortfolioProjects} from './project-portfolio.js';
 import { db, collection, getDocs } from './firebase-config.js';
 import { visibleProjectPhotos } from './project-photo-visibility.mjs';
 import { readProjectPhotoVisibility } from './project-photo-store.js';
@@ -35,9 +36,13 @@ function current(key){
 }
 
 function applyProjectsPage(){
-  for(const key of ORDER){
+  const cards=[];
+  for(const [index,key] of ORDER.entries()){
     const project=current(key);
-    for(const card of document.querySelectorAll(`.portfolio-card[data-gallery="${key}"],.case-card[data-gallery="${key}"],.project-card[data-project="${key.toLowerCase()}"]`)){
+    const setting=projectCovers.get(coverId('builtin',key));
+    const details=portfolioDetails(setting,project.order??(index+1)*10);
+    const otherCards=document.querySelectorAll(`.case-card[data-gallery="${key}"],.project-card[data-project="${key.toLowerCase()}"]`);
+    for(const card of [...builtinPortfolioCards.filter(card=>card.dataset.gallery===key),...otherCards]){
       const visible=project.published && photos(key).length>0;
       card.hidden=!visible;
       card.style.display=visible?'':'none';
@@ -46,10 +51,16 @@ function applyProjectsPage(){
       const meta=card.querySelector('.portfolio-card__text div span');
       const img=card.querySelector('img');
       if(title) title.textContent=project.title;
-      if(meta) meta.textContent=`${project.category || 'Projeto'} · abrir galeria`;
-      if(img){img.alt=project.title;const list=photos(key).map(path=>({key:path,url:photoURL(path)}));const chosen=chooseCover(projectCovers.get(coverId('builtin',key)),list);if(chosen.selected){img.removeAttribute('srcset');if(chosen.key){img.dataset.cmsSource=chosen.key;img.src=window.AZO_CMS?.resolveAsset(chosen.url)||chosen.url}else{delete img.dataset.cmsSource;img.src=chosen.url}}else cover(img,key);}
+      if(meta) meta.textContent=project.category || 'Projeto';
+      if(img){img.alt=project.title;const list=photos(key).map(path=>({key:path,url:photoURL(path)}));const chosen=chooseCover(setting?.cover,list);if(chosen.selected){img.removeAttribute('srcset');if(chosen.key){img.dataset.cmsSource=chosen.key;img.src=window.AZO_CMS?.resolveAsset(chosen.url)||chosen.url}else{delete img.dataset.cmsSource;img.src=chosen.url}}else cover(img,key);}
+      if(card.matches('.portfolio-card')){
+        card.setAttribute('aria-label',`Abrir galeria ${project.title}`);
+        if(img)img.alt='';
+        cards.push({id:key,card,...details});
+      }
     }
   }
+  setPortfolioProjects('builtin',cards);
 }
 
 function installLightboxTitleSync(){
@@ -142,7 +153,7 @@ async function load(){
   if(window.__azoProjectVisibilityStarted)return;
   window.__azoProjectVisibilityStarted=true;
   try{
-    const [snap,visibility,covers]=await Promise.all([getDocs(collection(db,'projectSettings')),readProjectPhotoVisibility(),readProjectCovers().catch(()=>new Map())]);projectCovers=covers;
+    const [snap,visibility,covers]=await Promise.all([getDocs(collection(db,'projectSettings')),readProjectPhotoVisibility(),readProjectPresentation().catch(()=>new Map())]);projectCovers=covers;
     hiddenPhotos=visibility.hidden;
     addedPhotos=visibility.additions;
     snap.forEach(item=>{
@@ -155,13 +166,14 @@ async function load(){
     if(!document.documentElement.dataset.cmsReady){
       await new Promise(resolve=>window.addEventListener('azo:cms-ready',resolve,{once:true}));
     }
+    window.AZO_PROJECT_PHOTOS={photos:key=>current(key).published?photos(key):[],url:photoURL};
+    document.documentElement.dataset.azoProjectPhotosReady='true';
     applyProjectsPage();
     rebuildHomeProjects();
     installLightboxTitleSync();
-    window.AZO_PROJECT_PHOTOS={photos:key=>current(key).published?photos(key):[],url:photoURL};
-    document.documentElement.dataset.azoProjectPhotosReady='true';
   }catch(error){
     document.documentElement.dataset.azoProjectPhotosReady='failed';
+    setPortfolioProjects('builtin',null);
     console.warn('[AZO] Projetos originais ocultos até confirmar a visibilidade das fotos.',error);
   }
 }

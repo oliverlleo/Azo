@@ -129,9 +129,11 @@
       <header><div><p class="eyebrow">Portfólio</p><h2 id="project-modal-title">Novo projeto</h2></div><button class="icon-button" data-close-modal aria-label="Fechar">×</button></header>
       <form id="project-form">
         <input type="hidden" id="project-id">
-        <div class="form-grid"><label>Título<input id="project-title" required maxlength="90" placeholder="Ex.: Casa Horizonte"></label><label>Categoria<input id="project-category" maxlength="90" placeholder="Ex.: Arquitetura residencial"></label></div>
+        <div class="form-grid"><label>Título<input id="project-title" required maxlength="90" placeholder="Ex.: Casa Horizonte"></label><label>Tipo do projeto<input id="project-category" maxlength="90" placeholder="Ex.: Arquitetura residencial"></label></div>
         <label>Descrição<textarea id="project-description" rows="3" maxlength="600" placeholder="Descrição opcional do projeto"></textarea></label>
-        <div class="form-grid"><label>Ordem<input id="project-order" type="number" min="0" value="100"></label><label class="switch-field">Publicado <span class="switch"><input id="project-published" type="checkbox" checked><i></i></span></label></div>
+        <input id="project-order" type="hidden" value="100">
+        <label class="switch-field">Publicado <span class="switch"><input id="project-published" type="checkbox" checked><i></i></span></label>
+        <p class="notice" style="margin:0">Depois de salvar, use “Editar portfólio e capa” para definir a categoria, a ordem e o enquadramento da capa.</p>
         <div class="upload-zone" id="project-upload-zone"><input id="project-files" type="file" accept="image/*" multiple><div><b>＋</b><strong>Adicionar imagens</strong><small>Arraste ou escolha várias imagens. A primeira será a capa.</small></div></div>
         <div class="project-images" id="project-images"></div>
         <section class="project-registration-progress" id="project-progress" hidden aria-live="polite">
@@ -155,8 +157,8 @@
   <input type="file" id="asset-file-input" accept="image/*" hidden>
   <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
   <script type="module" src="friendly-ui.js?v=20261124-photos"></script>
-  <script type="module" src="admin.js?v=20261126-resume"></script>
-  <script type="module" src="existing-projects.js?v=20261125-cover"></script>
+  <script type="module" src="admin.js?v=20261127-portfolio"></script>
+  <script type="module" src="existing-projects.js?v=20261127-portfolio"></script>
   <script type="module" src="visual-editor.js?v=20261125-team"></script>
 </body>
 </html>
